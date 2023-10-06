@@ -34,8 +34,8 @@ read_mq <- function(file, data_cols, meta, sel_meta, filt_data, measure_col_patt
   
   dat <- raw |>
     select(id, all_of(measure_cols$name)) |>
-    pivot_longer(-id, names_to = "sample", values_to = "value") |>
-    mutate(value = na_if(value, 0)) |>
+    pivot_longer(-id, names_to = "sample", values_to = "intensity") |>
+    mutate(value = na_if(intensity, 0)) |>
     drop_na()
   info <- raw |>
     select(-all_of(measure_cols$name))
@@ -82,11 +82,11 @@ get_info_genes <- function(set) {
 normalise_to_median <- function(set) {
   med <- set$dat |>
     group_by(sample) |>
-    summarise(M = median(value, na.rm = TRUE)) |>
+    summarise(M = median(log10(intensity), na.rm = TRUE)) |>
     mutate(M = M / mean(M))
   set$dat <- set$dat |>
     left_join(med, by = "sample") |>
-    mutate(value_med = value / M) |>
+    mutate(abu_med = log10(intensity) / M) |>
     select(-M)
   set
 }

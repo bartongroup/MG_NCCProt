@@ -48,7 +48,8 @@ read_metadata <- function(file) {
   
   neg <- d |> 
     filter(str_detect(sample, "Neg")) |> 
-    select(-all_of(c(time_cols, treatment_cols)))
+    select(-all_of(c(time_cols, treatment_cols))) |> 
+    mutate(treatment = "Neg", time_point = "Neg")
   meta <- d |> 
     pivot_longer(all_of(time_cols), names_to = "time_point") |>
     filter(value == "+") |> 
@@ -62,5 +63,10 @@ read_metadata <- function(file) {
     select(experiment, sample, protocol, treatment, time_point, replicate, batch = tmt_batch, tmt_channel = tmt_channel_in_maxquant, tmt_tag) |> 
     mutate(batch = stringr::str_c("B", batch)) |> 
     unite(group, c(treatment, time_point), remove = FALSE) |> 
-    mutate(across(everything(), as_factor)) 
+    mutate(across(everything(), as_factor)) |> 
+    add_column(bad = FALSE) |> 
+    mutate(
+      treatment = fct_relevel(treatment, "DMSO"),
+      time_point = fct_relevel(time_point, "Nascent")
+    )
 }
