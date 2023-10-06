@@ -1,7 +1,9 @@
+.DS_Store
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
 _targets/
+mq_data/
 doc/*
 !doc/*qmd

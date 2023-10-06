@@ -1,30 +1,49 @@
-read_mq <- function(file, data_cols, id_cols, filt, meta, sel_experiment = NULL) {
-  if (!is.null(sel_experiment)) {
-    meta <- meta |>
-      filter(experiment == sel_experiment)
-  }
+read_mq <- function(file, data_cols, meta, sel_meta, filt_data, measure_col_pattern) {
+  meta <- meta |>
+    filter(rlang::eval_tidy(rlang::parse_expr(sel_meta)))
+
+  # All measure (reporter) columns
+  all_cols <- read_tsv(file, n_max = 0, show_col_types = FALSE) |>
+    names() 
+  data_cols <- data_cols |> 
+    filter(raw_name %in% all_cols)
   
-  n2n <- set_names(data_cols$raw_name, data_cols$name)
-  raw <- read_tsv(file, col_select = c(data_cols$raw_name, mr$measure_col), show_col_types = FALSE) |>
-    rename(all_of(n2n)) |>
-    mutate(id = as.character(id))
+  # We have several tags per TMT reporter, these are replicates
+  measure_cols <- tibble(raw_name = all_cols |> str_subset(measure_col_pattern)) |> 
+    mutate(tmt_channel = str_extract(raw_name, "(?<=ted )\\d{1,2}")) |> 
+    group_by(tmt_channel) |> 
+    mutate(replicate = as.character(seq(1, n()))) |> 
+    ungroup() |> 
+    inner_join(meta, by = c("tmt_channel", "replicate")) |> 
+    mutate(type = "n") |> 
+    select(name = sample, raw_name, type)
+  
+  cols <- bind_rows(data_cols, measure_cols)
+  # types <- paste0(cols$type, collapse = "")
+  
+  n2n <- set_names(cols$raw_name, cols$name)
+  raw <- read_tsv(file, col_select = cols$raw_name, guess_max = 10000, show_col_types = FALSE) |>
+    rename(all_of(n2n))
+  # Some files have these missing
+  if(all(c("n_razor_unique", "reverse", "contaminant") %in% all_cols)) {
+    raw <- raw |> 
+      filter(rlang::eval_tidy(rlang::parse_expr(filt_data)))
+  }
+  raw <- raw |> 
+    mutate(id = row_number(), .before = 1)
+  
   dat <- raw |>
-    filter(rlang::eval_tidy(rlang::parse_expr(filt))) |>
-    select(all_of(id_cols), all_of(mr$measure_col)) |>
-    pivot_longer(-all_of(id_cols), names_to = "measure_col", values_to = "value") |>
+    select(id, all_of(measure_cols$name)) |>
+    pivot_longer(-id, names_to = "sample", values_to = "value") |>
     mutate(value = na_if(value, 0)) |>
-    left_join(mr, by = "measure_col") |>
-    select(id, multi, sample, value) |>
-    mutate(across(c(id, multi), as.integer)) |>
     drop_na()
   info <- raw |>
-    select(-all_of(mr$measure_col)) |>
-    mutate(id = as.integer(id))
-  
+    select(-all_of(measure_cols$name))
+
   set <- list(
     info = info,
     dat = dat,
-    metadata = meta |> select(-measure_col)
+    metadata = meta
   )
   
   set <- normalise_to_median(set)

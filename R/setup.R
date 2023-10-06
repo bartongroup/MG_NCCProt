@@ -1,10 +1,15 @@
 METADATA_FILE <- "info/Design_experiments.xlsx"
 
+EXPERIMENTS <- tibble::tribble(
+  ~name, ~experiment, ~protocol, ~file,
+  "e1_input", "E1", "Input", "mq_data/Experiment 1 Input/proteinGroups_LI.txt",
+  "e1_ip", "E1", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt",
+  "e2_ip", "E2", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt"
+) |> 
+  dplyr::mutate(selection = stringr::str_glue("experiment == '{experiment}' & protocol == '{protocol}'"))
+
 PROTEINS_DATA_COLUMNS <- tibble::tribble(
   ~name, ~raw_name, ~type,
-  "id", "id", "c",
-  "peptide_ids", "Peptide IDs", "c",
-  "phospho_ids", "Phospho (STY) site IDs", "c",
   "proteins", "Protein IDs", "c",
   "protein", "Majority protein IDs", "c",
   "gene_name", "Gene names", "c",
@@ -22,7 +27,7 @@ KEEP_PROTEINS_COLUMNS <- c("peptide_ids", "phospho_ids", "protein", "gene_name")
 # Using %in% is necessary when the alternative is NA
 PROTEINS_FILTER <- "n_razor_unique > 2 & !(reverse %in% '+') & !(contaminant %in% '+')"
 
-
+MEASURE_COL_PATTERN <- "Reporter intensity corrected \\d{1,2} SB"
 
 
 
