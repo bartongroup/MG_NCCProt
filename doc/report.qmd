@@ -1,0 +1,93 @@
+---
+title: "Nascent Chromatin Capture Proteomics"
+author:
+  - name: Marek Gierlinski
+    affiliations: Data Analysis Group
+    note: "Creator of this report"
+  - name: Susanne Bandau
+    affiliation: Molecular Cell and Developmental Biology
+  - name: Constance Adalbert
+    affiliation: Molecular Cell and Developmental Biology
+date: today
+date-format: "D MMMM YYYY"
+execute:
+  echo: false
+  cache: true
+  warning: false
+format:
+  html:
+    theme:
+      - journal
+      - report.scss
+    toc: true
+editor: source
+self-contained: true
+---
+
+```{r libraries, cache=FALSE, include=FALSE}
+suppressPackageStartupMessages({
+  library(targets)
+  library(tidyverse)
+  library(gt)
+  library(cowplot)
+  library(UpSetR)
+})
+
+tar_config_set(store = "../_targets")
+```
+
+# Proposal
+
+We have two different experiments that we would like to analyse (all proteomics data):
+
+1.  iPOND experiment: This is the experiment that we discussed during our meeting. We isolated nascent, 1h and 2h chromatin -/+ inhibitor treatment as well as took the corresponding total extracts for each sample before adding the beads to analyse total protein amounts (Input). Since we use two different inhibitors (TPL or DRB), we have 9 sample + 1 negative control (unlabelled) for IP as well as 10 Input samples per experiment; n=3(4)
+
+2.  IPOND chase experiments: 6 sample + control (per experiments); n=3 Instead of isolating nascent chromatin, we analyse the chromatin 24h after labelling. This experiment is to consolidate whether the changes seen on nascent chromatin (iPOND experiment) are also seen on total chromatin.
+
+In both cases, we would like to identify proteins/protein groups that show significant foldchanges between time points and treatment (volcano plots). Filter for the significant changing proteins and subject them to a hierarchical clustering analysis as well as to perform GO term analysis.
+
+The Input samples are total lysate and are used to see whether changes observed on newly replicated chromatin are due to changes in total protein level. The inhibitor that we are using are transcription inhibitor and even the treatment is short might affect the expression of certain proteins.
+ 
+The negative controls are cells that are not labelled with EdU and are used to account for non-specific binding to the streptavidin beads that we are using for the pulldown. To perform the pulldown, we are performing a Click-IT reaction to attach Biotin onto EdU. The Biotin attached to the EdU then allows us to pulldown EdU labelled chromatin using streptavidin beads. The non-specific binding during an iPOND experiments can be high.
+I normally harvest them together with the 2h time point but since they are unlabelled, untreated, asynchronized cells, the time they are harvest is not that important.
+
+# Design
+
+
+```{r}
+#| label: tbl-metadata
+#| tbl-cap: Design of the experiment. Colour-shaded rows indicate grouping by experiment (E1, E2) and protocol (IP, input).
+tar_load(metadata) 
+metadata |> 
+  group_by(experiment, protocol) |> 
+  gt() |> 
+  sub_missing(
+    missing_text = ""
+  ) |> 
+  tab_options(
+    row_group.background.color = "#FFEFDB"
+  )
+```
+
+```{r}
+#| label: fig-design-e1
+#| fig-cap: Illustration of experiment 1 design.
+knitr::include_graphics("images/design_1.png")
+```
+
+```{r}
+#| label: fig-design-e2
+#| fig-cap: Illustration of experiment 2 design.
+knitr::include_graphics("images/design_2.png")
+```
+
+
+# Session info
+
+```{r}
+#| label: session-info
+#| cache: false
+si <- targets::tar_read(session_info)
+si$loadedOnly <- NULL
+si
+```

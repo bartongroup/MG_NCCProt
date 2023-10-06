@@ -1,0 +1,61 @@
+METADATA_FILE <- "info/Design_experiments.xlsx"
+
+PROTEINS_DATA_COLUMNS <- tibble::tribble(
+  ~name, ~raw_name, ~type,
+  "id", "id", "c",
+  "peptide_ids", "Peptide IDs", "c",
+  "phospho_ids", "Phospho (STY) site IDs", "c",
+  "proteins", "Protein IDs", "c",
+  "protein", "Majority protein IDs", "c",
+  "gene_name", "Gene names", "c",
+  "protein_names", "Protein names", "c",
+  "sequence_length", "Sequence length", "n",
+  "n_razor_unique", "Razor + unique peptides", "n",
+  "reverse", "Reverse", "c",
+  "contaminant", "Potential contaminant", "c"
+)
+
+PROTEINS_ID_COLUMNS <- c("id")
+
+KEEP_PROTEINS_COLUMNS <- c("peptide_ids", "phospho_ids", "protein", "gene_name")
+
+# Using %in% is necessary when the alternative is NA
+PROTEINS_FILTER <- "n_razor_unique > 2 & !(reverse %in% '+') & !(contaminant %in% '+')"
+
+
+
+
+
+###-------------------------------------------------------------------
+
+read_metadata <- function(file) {
+  d1 <- readxl::read_excel(file, sheet = "Experiment 1") |> 
+    rename(sample = `Sample name`, protocol = Sample, replicate = Replicate) |> 
+    add_column(experiment = "E1", `6h` = "-") |> 
+    mutate(`TMT channel in Maxquant` = as.character(`TMT channel in Maxquant`))
+  d2 <- readxl::read_excel(file, sheet = "Experiment 2") |> 
+    rename(sample = `Sample name`, protocol = Sample, replicate = Replicate) |> 
+    add_column(experiment = "E2", Nascent = "-")
+  d <- bind_rows(d1, d2)
+  
+  time_cols <- c("Nascent", "1h",  "2h", "6h")
+  treatment_cols <- c("DMSO", "TPL", "DRB")
+  
+  neg <- d |> 
+    filter(str_detect(sample, "Neg")) |> 
+    select(-all_of(c(time_cols, treatment_cols)))
+  meta <- d |> 
+    pivot_longer(all_of(time_cols), names_to = "time_point") |>
+    filter(value == "+") |> 
+    select(-value) |> 
+    pivot_longer(all_of(treatment_cols), names_to = "treatment") |>
+    filter(value == "+") |> 
+    select(-value) 
+  bind_rows(neg, meta) |> 
+    arrange(experiment, protocol, treatment, time_point) |> 
+    clean_names() |> 
+    select(experiment, sample, protocol, treatment, time_point, replicate, batch = tmt_batch, tmt_channel = tmt_channel_in_maxquant, tmt_tag) |> 
+    mutate(batch = stringr::str_c("B", batch)) |> 
+    unite(group, c(treatment, time_point), remove = FALSE) |> 
+    mutate(across(everything(), as_factor)) 
+}
