@@ -21,8 +21,19 @@ dat2mat <- function(dat, what = "abu_norm", names = "sample") {
 
 add_genes <- function(res, info) {
   g <- info |> 
-    mutate(gene_symbol = str_remove(gene_name, ";.+$")) |> 
+    mutate(gene_symbol = str_remove(gene_symbols, ";.+$")) |> 
     select(id, gene_symbol)
   res |> 
     left_join(g, by = "id")
 }
+
+download_uniprot_mapping <- function(uri) {
+  read_tsv(uri, col_names = c("uniprot", "what", "gid"), show_col_types = FALSE) |> 
+    filter(what == "Gene_Name") |> 
+    select(uniprot, gene_symbol = gid)
+}
+
+
+
+
+

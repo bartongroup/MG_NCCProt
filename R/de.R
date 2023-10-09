@@ -18,15 +18,14 @@ tabulate_de <- function(fit) {
 }
 
 # DE for selected contrasts; if not specified, all pairs of contrasts 
-limma_de <- function(set, contrasts = NULL, group_var = "treatment", what = "abu_norm",
+limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med",
                      filt = "TRUE", names = "sample") {
   meta <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     mutate(group = get(group_var)) |> 
     filter(!is.na(group)) |> 
     droplevels()
-  groups <- unique(as.character(meta$group)) |> 
-    janitor::make_clean_names()
+  groups <- unique(as.character(meta$group)) 
   design_mat <- model.matrix(~ 0 + group, data = meta)
   colnames(design_mat) <- groups
   

@@ -81,6 +81,130 @@ knitr::include_graphics("images/design_1.png")
 knitr::include_graphics("images/design_2.png")
 ```
 
+# Data
+
+## Source and filtering
+
+Three `proteinGroups` files were used as the starting point. Data were filtered to remove reverse sequences and potential contaminants. Also, only proteins with at least 3 razor pepties were kept.
+
+## Protein detection
+
+
+
+```{r}
+#| label: fig-protein-detection
+#| fig-cap: Number of detected proteins in each sample
+#| fig-width: 8
+#| fig-height: 12
+g1 <- tar_read(fig_sample_detection_e1_ip)
+g2 <- tar_read(fig_sample_detection_e1_input)
+g3 <- tar_read(fig_sample_detection_e2_ip)
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
+```
+
+
+## Correlation matrix
+
+@fig-cormat shows Pearson's correlation coefficient for all pairs of samples. It is a bit messy. The bad sample is clearly visible as a dark row and column. The figure is based on logarithm of normalised intensities.
+
+```{r}
+#| label: fig-cormat
+#| fig-cap: Correlation matrix for all samples.
+#| fig-width: 6
+#| fig-height: 20
+g1 <- tar_read(fig_matrix_e1_ip)
+g2 <- tar_read(fig_matrix_e1_input)
+g3 <- tar_read(fig_matrix_e2_ip)
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C")) 
+
+```
+
+## PCA
+
+@fig-pca shows first two principal components, based on logarithm of normalised intensities. The bad replicate stands out.
+
+```{r}
+#| label: fig-pca
+#| fig-cap: PCA decomposition based on logarithm of normalised intensity.
+#| fig-width: 6
+#| fig-height: 14
+g1 <- tar_read(fig_pca_e1_ip)
+g2 <- tar_read(fig_pca_e1_input)
+g3 <- tar_read(fig_pca_e2_ip)
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C")) 
+```
+
+## Clustering
+
+@fig-clustering shows clustering of all samples. Colours represent batches. We can see that batch effects dominate this experiment. Hierarchical clustering was calculated based on logarithm of normalised intensities, with Euclidean distance, using complete linkage method.
+
+```{r}
+#| label: fig-clustering
+#| fig-cap: Dendrogram of samples, based on logarithm of normalised intensity. 
+#| fig-width: 8
+#| fig-height: 18
+g1 <- tar_read(fig_clustering_e1_ip)
+g2 <- tar_read(fig_clustering_e1_input)
+g3 <- tar_read(fig_clustering_e2_ip)
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3, 2))
+```
+
+
+# Experiment 1 IP
+
+## Differential abundance
+
+### Description
+
+#### From limma R vignette
+
+For differential expression we use `limma`. It used an empirical Bayes method to squeeze the peptide-wise residual variances towards a common value (or towards a global trend) (Smyth, 2004; Phipson et al, 2016). The degrees of freedom for the individual variances are increased to reflect the extra information gained from the empirical Bayes moderation, resulting in increased statistical power to detect differential expression.
+
+For more information see [Ritchie et al. 2015](https://academic.oup.com/nar/article/43/7/e47/2414268).
+
+#### In simpler words
+
+`limma` uses a t-test, which is moderated by borrowing data across all peptides. A global variance model is built and moderation squeezes variances towards this global trend. Extreme variances (either large or small) become less extreme, which makes the test more robust to random outliers.
+
+### Full model
+
+First, we analyse all data using a 'full' model taking into account all potential effects:
+
+`~ treatment + time_point + batch`
+
+The differential abundance is calculated with respect to the baseline:
+
+-   treatment = DMSO
+-   time_point = Nascent
+-   batch = B1
+
+@fig-da-full shows volcano and MA plots for each of the coefficients. Each panel corresponds to one value of one coefficient, showing differential abundance with respect to the baseline.
+
+```{r}
+#| label: fig-da-full
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01. A. Volcano plot. B. MA plot.
+#| fig-width: 8
+#| fig-height: 14
+g1 <- tar_read(fig_volcano_full_e1_ip)
+g2 <- tar_read(fig_ma_full_e1_ip)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+### Selected contrasts
+
+Next, selected contrasts, or pairs of conditions, were selected and differential abundance was carried out. @fig-da-contrasts shows volcano and MA plots for each contrast.
+
+```{r}
+#| label: fig-da-contrasts
+#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01. A. Volcano plot. B. MA plot.
+#| fig-width: 8
+#| fig-height: 14
+g1 <- tar_read(fig_volcano_contrasts_e1_ip)
+g2 <- tar_read(fig_ma_contrasts_e1_ip)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+
 
 # Session info
 

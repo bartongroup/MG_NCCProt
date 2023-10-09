@@ -1,11 +1,11 @@
-read_mq <- function(file, data_cols, meta, sel_meta, filt_data, measure_col_pattern) {
-  meta <- meta |>
+read_mq <- function(file, data_cols, metadata, uni_gene, sel_meta, filt_data, measure_col_pattern) {
+  meta <- metadata |>
     filter(rlang::eval_tidy(rlang::parse_expr(sel_meta)))
 
   # All measure (reporter) columns
   all_cols <- read_tsv(file, n_max = 0, show_col_types = FALSE) |>
     names() 
-  data_cols <- data_cols |> 
+  dat_cols <- data_cols |> 
     filter(raw_name %in% all_cols)
   
   # We have several tags per TMT reporter, these are replicates
@@ -18,14 +18,14 @@ read_mq <- function(file, data_cols, meta, sel_meta, filt_data, measure_col_patt
     mutate(type = "n") |> 
     select(name = sample, raw_name, type)
   
-  cols <- bind_rows(data_cols, measure_cols)
+  cols <- bind_rows(dat_cols, measure_cols)
   # types <- paste0(cols$type, collapse = "")
   
   n2n <- set_names(cols$raw_name, cols$name)
   raw <- read_tsv(file, col_select = cols$raw_name, guess_max = 10000, show_col_types = FALSE) |>
     rename(all_of(n2n))
   # Some files have these missing
-  if(all(c("n_razor_unique", "reverse", "contaminant") %in% all_cols)) {
+  if(all(c("n_razor_unique", "reverse", "contaminant") %in% cols$name)) {
     raw <- raw |> 
       filter(rlang::eval_tidy(rlang::parse_expr(filt_data)))
   }
@@ -37,13 +37,29 @@ read_mq <- function(file, data_cols, meta, sel_meta, filt_data, measure_col_patt
     pivot_longer(-id, names_to = "sample", values_to = "intensity") |>
     mutate(value = na_if(intensity, 0)) |>
     drop_na()
+  
   info <- raw |>
-    select(-all_of(measure_cols$name))
+    select(-all_of(measure_cols$name)) |> 
+    mutate(gene_symbols = if_else(is.na(gene_symbols), proteins, gene_symbols))
+  
+  # gene_symbols is from maxQuant table
+  # gene_symbol is from Uniprot mapping of individual proteins
+  id_prot_gene <- info |>
+    select(id, uniprot = proteins, gene_symbols) |>
+    separate_longer_delim(uniprot, delim = ";") |>
+    mutate(uniprot = str_remove(uniprot, "\\-\\d+$")) |>
+    left_join(uni_gene, by = c("uniprot"), multiple = "all") |>
+    mutate(
+      gene_symbol = if_else(is.na(gene_symbol), uniprot, gene_symbol)
+    )
+  
 
   set <- list(
     info = info,
+    id_prot_gene = id_prot_gene,
     dat = dat,
-    metadata = meta
+    metadata = meta,
+    columns = cols
   )
   
   set <- normalise_to_median(set)
@@ -71,11 +87,11 @@ get_expressed_ids <- function(set) {
 
 get_info_genes <- function(set) {
   set$info |>
-    select(gene_name) |>
+    select(gene_symbols) |>
     drop_na() |>
-    separate_rows(gene_name, sep = ";") |>
+    separate_rows(gene_symbols, sep = ";") |>
     distinct() |>
-    pull(gene_name)
+    pull(gene_symbols)
 }
 
 
@@ -113,3 +129,51 @@ normalise_to_proteins <- function(pho, pro) {
     select(-c(protein_id, condition, prot, prot_mean))
   pho
 }
+
+
+merge_sets <- function(set1, set2) {
+  sel_ <- function(info) {
+    info |> 
+      select(id, x = gene_symbols) |> 
+      separate_longer_delim(x, delim = ";")
+  }
+  
+  uni1 <- sel_(set1$info)
+  uni2 <- sel_(set2$info)
+  
+  # id mapping
+  mp <- left_join(uni1, uni2, by = "x", relationship = "many-to-many") |> 
+    select(-x) |> 
+    distinct() |> 
+    group_by(id.x) |> 
+    mutate(n = n()) |>
+    ungroup()
+  
+  dat2 <- set2$dat |> 
+    right_join(mp |> filter(n == 1), by = c("id" = "id.y"), relationship = "many-to-many") |> 
+    select(-c(id, n)) |> 
+    rename(id = id.x) |> 
+    relocate(id, .before = 1) |> 
+    drop_na()
+  
+  meta <- bind_rows(
+    set1$metadata, 
+    set2$metadata
+  )
+  cols <- bind_rows(set1$columns, set2$columns)
+  
+  dat <- bind_rows(set1$dat, dat2) |> 
+    select(-starts_with("abu"))
+  
+  set <- list(
+    columns = cols,
+    info = set1$info,
+    id_prot_gene = set1$id_prot_gene,
+    dat = dat,
+    metadata = meta,
+    mapping = mp
+  )
+  
+  set |> normalise_to_median()
+}
+

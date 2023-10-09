@@ -5,6 +5,8 @@ gs <- function(gg, name, width, height) {
          width = width, height = height, dpi = 300)
 }
 
+th <- ggplot2::theme_bw() +
+  ggplot2::theme(panel.grid = ggplot2::element_blank())
 
 
 plot_detection <- function(set) {
@@ -39,12 +41,13 @@ plot_sample_detection <- function(set) {
     group_by(sample) |> 
     tally()
   rm(set)
-  ggplot(d, aes(x = n, y = fct_reorder(sample, n))) +
-    theme_bw() +
-    theme(panel.grid = element_blank()) +
-    geom_segment(aes(xend = 0, yend = fct_reorder(sample, n)), colour = "grey70") +
+  ggplot(d, aes(y = n, x = fct_reorder(sample, n))) +
+    th +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    geom_segment(aes(yend = 0, xend = fct_reorder(sample, n)), colour = "grey70") +
     geom_point() +
-    labs(x = "Number of detected proteins", y = "Sample")
+    scale_y_continuous(expand = expansion(mult = c(0, 0.03))) +
+    labs(y = "Number of detected proteins", x = NULL)
 }
 
 
@@ -72,8 +75,7 @@ plot_sample_ridges <- function(st, what = "abu_med", name_var = "sample", fill_v
   with(env, {
     d |> 
       ggplot(aes(x = val, y = gr, fill = fil)) +
-      theme_bw() +
-      theme(panel.grid = element_blank()) +
+      th +
       geom_density_ridges(scale = scale, bandwidth = bandwidth) +
       #geom_vline(xintercept = 0) +
       scale_fill_manual(values = okabe_ito_palette) +
@@ -121,7 +123,7 @@ plot_clustering <- function(set, text_size = 10, what = "abu_med", dist.method =
 }
 
 
-plot_distance_matrix <- function(set, what = "abu_med", text_size = 10) {
+plot_distance_matrix <- function(set, what = "abu_med", text_size = 10, min_cor = NA) {
   tab <- dat2mat(set$dat, what)
   
   d <- cor(tab, use = "complete.obs") |> 
@@ -133,7 +135,7 @@ plot_distance_matrix <- function(set, what = "abu_med", text_size = 10) {
   rm(set, tab)
   ggplot(d, aes(x = sample, y = name)) +
     geom_tile(aes(fill = value)) +
-    scale_fill_viridis_c(option = "cividis") +
+    scale_fill_viridis_c(option = "cividis", limits = c(min_cor, 1)) +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = text_size),
       axis.text.y = element_text(size = text_size),
@@ -147,14 +149,11 @@ plot_xy <- function(dat, colour_var, shape_var, point_size = 1) {
   dat |> 
     rename(colvar = !!colour_var, shapevar = !!shape_var) |> 
     ggplot(aes(x = x, y = y, colour = colvar, shape = shapevar)) +
-    theme_bw() +
+    th +
     geom_point(size = point_size) +
     scale_color_manual(values = okabe_ito_palette, name = colour_var) +
     scale_shape_manual(values = c(15:18, 0, 1, 2, 5, 6), na.value = 4, name = shape_var) +
-    labs(x = NULL, y = NULL) +
-    theme(
-      panel.grid = element_blank()
-    ) 
+    labs(x = NULL, y = NULL) 
   #geom_text_repel(aes(label = sample), size = 3, colour = "black")
 }
 
@@ -244,8 +243,7 @@ plot_pdist <- function(res, p = "PValue", group = "contrast", n_bins = 50) {
     select(p, grp)
   rm(res)
   ggplot(r, aes(x = p, y = after_stat(density))) +
-    theme_bw() +
-    theme(panel.grid = element_blank()) +
+    th +
     geom_histogram(breaks = brks) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.03))) +
     facet_wrap(~grp)
@@ -266,9 +264,8 @@ plot_up_down <- function(res, fc = "logFC", fdr = "FDR", group = "contrast", fdr
     mutate(adj = -1.3 * sign(x) / 2 + 0.5)
   rm(res)
   ggplot(r, aes(x = x, y = group, fill = direction)) +
-    theme_bw() +
+    th +
     theme(
-      panel.grid = element_blank(),
       legend.position = "none"
     ) +
     geom_vline(xintercept = 0, colour = "grey50") +
@@ -278,4 +275,50 @@ plot_up_down <- function(res, fc = "logFC", fdr = "FDR", group = "contrast", fdr
     scale_x_continuous(expand = expansion(mult = c(0.2, 0.2))) +
     labs(x = "Count", y = "Coefficient")
 }
+
+
+plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", shape_var = "batch",
+                         ncol = NULL, point_size = 1.5, filt = "TRUE",
+                         sample_sel = NULL) {
+  meta <- set$metadata
+  if (!is.null(sample_sel))
+    meta <- meta |> filter(sample %in% as.character(sample_sel))
+  info <- set$info |> 
+    filter(id %in% pids) |> 
+    mutate(protein_names = str_remove(protein_names, ";.+$")) |> 
+    mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
+  d <- set$dat |>
+    mutate(val = get(what)) |> 
+    filter(id %in% pids) |>
+    right_join(meta, by = "sample") |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |>
+    droplevels() |> 
+    mutate(colvar = get(colour_var), shapevar = get(shape_var)) |> 
+    arrange(protocol, treatment, time_point) |> 
+    unite(x, c(protocol, treatment, time_point)) |> 
+    mutate(x = as_factor(x), xi = as.integer(x)) |> 
+    left_join(info, by = "id") |> 
+    select(id, sample, prot, x, xi, val, colvar, shapevar)
+  dm <- d |> 
+    group_by(id, prot, xi) |> 
+    summarise(M = mean(val), n = n()) |> 
+    filter(n > 1)
+  rm(set)
+  ggplot(d, aes(x = x, y = val)) +
+    theme_bw() +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank()
+    ) +
+    scale_x_discrete(drop = FALSE) +
+    scale_colour_manual(values = okabe_ito_palette, name = colour_var) +
+    scale_shape_discrete(name = shape_var) +
+    ggbeeswarm::geom_quasirandom(aes(colour = colvar, shape = shapevar), width = 0.2, size = point_size, alpha = 0.8) +
+    geom_segment(data = dm, aes(x = xi - 0.3, y = M, xend = xi + 0.3, yend = M), linewidth = 1, colour = "brown") +
+    facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol) +
+    labs(x = NULL, y = what)
+}
+
+
 

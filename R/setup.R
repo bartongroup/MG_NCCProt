@@ -1,10 +1,29 @@
+UNIPROT_MAPPING_FILE <- "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
+
 METADATA_FILE <- "info/Design_experiments.xlsx"
 
+CONTRASTS_E1 <- c(
+  "TPL_nas-DMSO_nas",
+  "DRB_nas-DMSO_nas",
+  "TPL_2h-DMSO_2h",
+  "DRB_2h-DMSO_2h",
+  "TPL_2h-TPL_nas",
+  "DRB_2h-DRB_nas"
+)
+
+CONTRASTS_E2 <- c(
+  "TPL_6h-DMSO_6h",
+  "DRB_6h-DMSO_6h",
+  "TPL_6h-TPL_2h",
+  "DRB_6h-DRB_2h"
+)
+
+
 EXPERIMENTS <- tibble::tribble(
-  ~name, ~experiment, ~protocol, ~file,
-  "e1_input", "E1", "Input", "mq_data/Experiment 1 Input/proteinGroups_LI.txt",
-  "e1_ip", "E1", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt",
-  "e2_ip", "E2", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt"
+  ~name, ~experiment, ~protocol, ~file, ~contrasts,
+  "e1_input", "E1", "Input", "mq_data/Experiment 1 Input/proteinGroups_LI.txt", CONTRASTS_E1,
+  "e1_ip", "E1", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt", CONTRASTS_E1,
+  "e2_ip", "E2", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt", CONTRASTS_E2
 ) |> 
   dplyr::mutate(selection = stringr::str_glue("experiment == '{experiment}' & protocol == '{protocol}'"))
 
@@ -12,7 +31,7 @@ PROTEINS_DATA_COLUMNS <- tibble::tribble(
   ~name, ~raw_name, ~type,
   "proteins", "Protein IDs", "c",
   "protein", "Majority protein IDs", "c",
-  "gene_name", "Gene names", "c",
+  "gene_symbols", "Gene names", "c",
   "protein_names", "Protein names", "c",
   "sequence_length", "Sequence length", "n",
   "n_razor_unique", "Razor + unique peptides", "n",
@@ -22,12 +41,11 @@ PROTEINS_DATA_COLUMNS <- tibble::tribble(
 
 PROTEINS_ID_COLUMNS <- c("id")
 
-KEEP_PROTEINS_COLUMNS <- c("peptide_ids", "phospho_ids", "protein", "gene_name")
-
 # Using %in% is necessary when the alternative is NA
 PROTEINS_FILTER <- "n_razor_unique > 2 & !(reverse %in% '+') & !(contaminant %in% '+')"
 
 MEASURE_COL_PATTERN <- "Reporter intensity corrected \\d{1,2} SB"
+
 
 
 
@@ -40,7 +58,7 @@ read_metadata <- function(file) {
     mutate(`TMT channel in Maxquant` = as.character(`TMT channel in Maxquant`))
   d2 <- readxl::read_excel(file, sheet = "Experiment 2") |> 
     rename(sample = `Sample name`, protocol = Sample, replicate = Replicate) |> 
-    add_column(experiment = "E2", Nascent = "-")
+    add_column(experiment = "E2", nascent = "-")
   d <- bind_rows(d1, d2)
   
   time_cols <- c("Nascent", "1h",  "2h", "6h")
@@ -58,6 +76,9 @@ read_metadata <- function(file) {
     filter(value == "+") |> 
     select(-value) 
   bind_rows(neg, meta) |> 
+    mutate(time_point = if_else(time_point == "Nascent", "nas", time_point)) |> 
+    select(-sample) |> 
+    unite(sample, c(experiment, protocol, treatment, time_point, replicate), remove = FALSE) |> 
     arrange(experiment, protocol, treatment, time_point) |> 
     clean_names() |> 
     select(experiment, sample, protocol, treatment, time_point, replicate, batch = tmt_batch, tmt_channel = tmt_channel_in_maxquant, tmt_tag) |> 
@@ -67,6 +88,6 @@ read_metadata <- function(file) {
     add_column(bad = FALSE) |> 
     mutate(
       treatment = fct_relevel(treatment, "DMSO"),
-      time_point = fct_relevel(time_point, "Nascent")
+      time_point = fct_relevel(time_point, "nas")
     )
 }
