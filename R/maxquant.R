@@ -1,6 +1,7 @@
 read_mq <- function(file, data_cols, metadata, uni_gene, sel_meta, filt_data, measure_col_pattern) {
   meta <- metadata |>
-    filter(rlang::eval_tidy(rlang::parse_expr(sel_meta)))
+    filter(rlang::eval_tidy(rlang::parse_expr(sel_meta))) |> 
+    droplevels()
 
   # All measure (reporter) columns
   all_cols <- read_tsv(file, n_max = 0, show_col_types = FALSE) |>

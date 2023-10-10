@@ -33,13 +33,25 @@ targets_main <- function() {
       fig_pdist_full = plot_pdist(da_full),
       fig_volcano_contrasts = plot_volcano(da_contrasts),
       fig_ma_contrasts = plot_ma(da_contrasts),
-      fig_pdist_contrasts = plot_pdist(da_contrasts)
+      fig_pdist_contrasts = plot_pdist(da_contrasts),
+      
+      # map through TPL and DRB
+      tar_map(
+        values = TREATMENTS,
+        names = name,
+        
+        tar_plan(
+          da_samples = prot$metadata |> filter(treatment %in% c("DMSO", treat)) |> pull(sample),
+          da_pids_full = da_full |> filter(contrast == ctr & sig) |> pull(id),
+          da_genes_full = id2gene(da_pids_full, prot$id_prot_gene),
+          fig_prots_da_full = plot_protein(prot, pids = da_pids_full, sample_sel = da_samples, ncol = 4)
+        )
+      )
     )
   )
   
   merged_e1 <- tar_plan(
-    prot_e1 = merge_sets(prot_e1_ip, prot_e1_input),
-    fig_prot_tpl = plot_protein(prot_e1, pids = da_pids_contrasts_tpl, sample_sel = da_samples_tpl)
+    prot_e1 = merge_sets(prot_e1_ip, prot_e1_input)
   )
   
   input_normalisation <- tar_plan(
@@ -54,45 +66,35 @@ targets_main <- function() {
     fig_pdist_full_inpnorm = plot_pdist(da_full_inpnorm),
     fig_volcano_contrasts_inpnorm = plot_volcano(da_contrasts_inpnorm),
     fig_ma_contrasts_inpnorm = plot_ma(da_contrasts_inpnorm),
-    fig_pdist_contrasts_inpnorm = plot_pdist(da_contrasts_inpnorm)
+    fig_pdist_contrasts_inpnorm = plot_pdist(da_contrasts_inpnorm),
+    
+    tar_map(
+      values = TREATMENTS,
+      names = name,
+      
+      tar_plan(
+        da_samples_inpnorm = prot_e1$metadata |> filter(treatment %in% c("DMSO", treat)) |> pull(sample),
+        da_pids_full_inpnorm = da_full_inpnorm |> filter(contrast == ctr & sig) |> pull(id),
+        fig_prots_da_full_inpnorm = plot_protein(prot_e1_ip, pids = da_pids_full_inpnorm, sample_sel = da_samples_inpnorm)
+      )
+    )
   )
   
   selections <- tar_plan(
     contrasts_e1_ip = unlist(EXPERIMENTS[2, ]$contrasts),
     da_pids_contrasts_tpl = da_contrasts_e1_ip |> filter(contrast == "TPL_nas-DMSO_nas" & sig) |> pull(id),
-    da_pids_contrasts_drb = da_contrasts_e1_ip |> filter(contrast == "DRB_nas-DMSO_nas" & sig) |> pull(id)
-  )
-  
-  
-  map_treatments <- tar_map(
-    values = TREATMENTS,
-    names = name,
+    da_pids_contrasts_drb = da_contrasts_e1_ip |> filter(contrast == "DRB_nas-DMSO_nas" & sig) |> pull(id),
     
-    tar_plan(
-      da_samples = prot_e1$metadata |> filter(treatment %in% c("DMSO", treat)) |> pull(sample),
-      da_pids_full = da_full_e1_ip |> filter(contrast == ctr & sig) |> pull(id),
-      da_pids_full_input = da_full_e1_input |> filter(contrast == ctr & sig) |> pull(id),
-      da_pids_full_inpnorm = da_full_inpnorm |> filter(contrast == ctr & sig) |> pull(id),
-      
-      da_genes_full = id2gene(da_pids_full, prot_e1_ip$id_prot_gene),
-      da_genes_full_input = id2gene(da_pids_full_input, prot_e1_input$id_prot_gene),
-      
-      da_genes_ip_only = setdiff(da_genes_full, da_genes_full_input),
-      
-      fig_prots_da_full = plot_protein(prot_e1_ip, pids = da_pids_full, sample_sel = da_samples),
-      fig_prots_da_full_input = plot_protein(prot_e1_input, pids = da_pids_full_input, sample_sel = da_samples),
-      fig_prots_da_full_inpnorm = plot_protein(prot_e1_ip, pids = da_pids_full_inpnorm, sample_sel = da_samples)
-    )
+    da_genes_ip_only_drb = setdiff(da_genes_full_drb_e1_ip, da_genes_full_drb_e1_input),
+    da_genes_ip_only_tpl = setdiff(da_genes_full_tpl_e1_ip, da_genes_full_tpl_e1_input)
   )
   
-
   c(
     annotations,
     read_metadata,
     map_experiments,
     selections,
     merged_e1,
-    input_normalisation,
-    map_treatments
+    input_normalisation
   )
 }

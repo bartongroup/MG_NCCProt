@@ -203,6 +203,8 @@ g2 <- tar_read(fig_ma_full_e1_ip)
 plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 ```
 
+### Differentially abundant proteins
+
 We see that batch effects are much larger (both in effect size in number of significantly changing proteins) than the effects of treatment and time point. In particular, both treatments (DRB and TPL) result in only small changes in protein intensity with only a few log2-fold changes greater than 1 (that i, more than a two-fold change). @fig-prots-da-full show all proteins changing significantly for treatments DRB and TPL.
 
 
@@ -211,12 +213,12 @@ We see that batch effects are much larger (both in effect size in number of sign
 #| fig-cap: Normalised log-abundance of proteins significantly changing for treatment DRB (A) and TPL (B). Please note strong batch effects.
 #| fig-width: 8
 #| fig-height: 11
-g1 <- tar_read(fig_prots_da_full_drb)
-g2 <- tar_read(fig_prots_da_full_tpl)
+g1 <- tar_read(fig_prots_da_full_drb_e1_ip)
+g2 <- tar_read(fig_prots_da_full_tpl_e1_ip)
 plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 ```
 
-## Removing input
+### Removing input
 
 Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full). When input-changing proteins are removed, we are only left with the following:
 
@@ -261,9 +263,55 @@ plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 #| fig-cap: Normalised log-abundance of proteins significantly changing for treatment DRB (A) and TPL (B). Please note strong batch effects.
 #| fig-width: 8
 #| fig-height: 11
-g1 <- tar_read(fig_prots_da_full_input_drb)
-g2 <- tar_read(fig_prots_da_full_input_tpl)
+g1 <- tar_read(fig_prots_da_full_drb_e1_input)
+g2 <- tar_read(fig_prots_da_full_tpl_e1_input)
 plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+
+
+# Experiment 2 IP
+
+
+## Full model
+
+First, we analyse all data using a 'full' model taking into account all potential effects:
+
+`~ treatment + time_point + batch`
+
+This approach assumes that effects of treatment and time point are independent and additive. The model will infer the effect of treatment, time point and batch from all data in experiment 1 (except for negative samples which were removed for this analysis).
+
+The differential abundance is calculated with respect to the baseline:
+
+-   treatment = DMSO
+-   time_point = 2h
+-   batch = B1
+
+@fig-da-full-e2 shows volcano and MA plots for each of the coefficients. Each panel corresponds to one value of one coefficient, showing differential abundance with respect to the baseline. For example, `treatmentDRB` shows the effect of DRB inferred from all samples in experiment 1.
+
+```{r}
+#| label: fig-da-full-e2
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-width: 8
+#| fig-height: 12
+g1 <- tar_read(fig_volcano_full_e2_ip)
+g2 <- tar_read(fig_ma_full_e2_ip)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+### Differentially abundant proteins
+
+There are no differentially abundant proteins in DRB. @fig-prots-da-full-e2 shows DA proteins for TPL.
+
+```{r}
+#| label: fig-prots-da-full-e2
+#| fig-cap: Normalised log-abundance of proteins significantly changing for treatment TPL.
+#| fig-width: 8
+#| fig-height: 30
+g1 <- tar_read(fig_prots_da_full_drb_e2_ip)
+g2 <- tar_read(fig_prots_da_full_tpl_e2_ip)
+#plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+g2
 ```
 
 
