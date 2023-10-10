@@ -19,7 +19,7 @@ tabulate_de <- function(fit) {
 
 # DE for selected contrasts; if not specified, all pairs of contrasts 
 limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med",
-                     filt = "TRUE", names = "sample") {
+                     filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05) {
   meta <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     mutate(group = get(group_var)) |> 
@@ -45,13 +45,15 @@ limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med
     limma::eBayes()
   
   tabulate_de(fit) |> 
-    add_genes(set$info)
+    add_genes(set$info) |> 
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
 }
 
 
 
 # DE with formula
-limma_de_f <- function(set, formula, what = "abu_norm", filt = "TRUE", names = "sample") {
+limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "sample",
+                       logfc_limit = 1, fdr_limit = 0.05) {
   meta <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     droplevels()
@@ -64,8 +66,40 @@ limma_de_f <- function(set, formula, what = "abu_norm", filt = "TRUE", names = "
     limma::eBayes()
   
   tabulate_de(fit) |> 
+    add_genes(set$info) |> 
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
+}
+
+
+# Comment from Gordon Smyth on block design: The purpose of random blocking via
+# duplicateCorrelation etc is to recover inter-block information when the number
+# of blocks is large and the treatments are unbalanced with respect to the
+# blocks. Your experiment is completely balanced with only three blocks so there
+# is no inter-block information to recover and no advantage for random effects.
+
+# Limma with block design by subject/donor/patient...
+limma_de_block <- function(set, formula, block_var, what = "abu_med",
+                           filt = "TRUE", names = "sample") {
+  meta <- set$metadata |>
+    filter(!bad & !!rlang::parse_expr(filt)) |>
+    droplevels()
+  
+  tab <- dat2mat(set$dat, what, names)[, as.character(meta[[names]])]
+  design_mat <- model.matrix(as.formula(formula), data = meta)
+  block <- meta[[block_var]]
+  
+  # Inter subject correlation
+  corfit <- limma::duplicateCorrelation(tab, design_mat, block = block)
+  
+  # Fit with block and correlation
+  fit <- tab |>
+    limma::lmFit(design_mat, block = block, correlation = corfit$consensus.correlation) |>
+    limma::eBayes()
+  
+  tabulate_de(fit) |>
     add_genes(set$info)
 }
+
 
 
 

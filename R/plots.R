@@ -210,12 +210,12 @@ plot_volma <- function(res, group, point_size, point_alpha) {
 }
 
 plot_ma <- function(res, a = "AveExpr", fc = "logFC", p = "PValue", fdr = "FDR", group = "contrast",
-                    fdr_limit = 0.05, point_size = 0.5, point_alpha = 0.5) {
+                    point_size = 0.5, point_alpha = 0.5) {
   res |> 
     mutate(
       x = get(a),
       y = get(fc),
-      sel = get(fdr) < fdr_limit
+      sel = sig
     ) |> 
     plot_volma(group, point_size, point_alpha) +
     geom_hline(yintercept = 0, linewidth = 0.1, alpha = 0.5) +
@@ -223,12 +223,12 @@ plot_ma <- function(res, a = "AveExpr", fc = "logFC", p = "PValue", fdr = "FDR",
 }
 
 plot_volcano <- function(res, fc = "logFC", p = "PValue", fdr = "FDR", group = "contrast",
-                         fdr_limit = 0.05, point_size = 0.5, point_alpha = 0.5) {
+                         point_size = 0.5, point_alpha = 0.5) {
   res |> 
     mutate(
       x = get(fc),
       y = -log10(get(p)),
-      sel = get(fdr) < fdr_limit
+      sel = sig
     ) |> 
     plot_volma(group, point_size, point_alpha) +
     geom_vline(xintercept = 0, linewidth = 0.1, alpha = 0.5) +
@@ -286,7 +286,8 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
   info <- set$info |> 
     filter(id %in% pids) |> 
     mutate(protein_names = str_remove(protein_names, ";.+$")) |> 
-    mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
+    #mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
+    mutate(prot = gene_symbols)
   d <- set$dat |>
     mutate(val = get(what)) |> 
     filter(id %in% pids) |>
@@ -316,7 +317,7 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
     scale_shape_discrete(name = shape_var) +
     ggbeeswarm::geom_quasirandom(aes(colour = colvar, shape = shapevar), width = 0.2, size = point_size, alpha = 0.8) +
     geom_segment(data = dm, aes(x = xi - 0.3, y = M, xend = xi + 0.3, yend = M), linewidth = 1, colour = "brown") +
-    facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol) +
+    facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol, scales = "free_y") +
     labs(x = NULL, y = what)
 }
 

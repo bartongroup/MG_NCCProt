@@ -35,8 +35,7 @@ read_mq <- function(file, data_cols, metadata, uni_gene, sel_meta, filt_data, me
   dat <- raw |>
     select(id, all_of(measure_cols$name)) |>
     pivot_longer(-id, names_to = "sample", values_to = "intensity") |>
-    mutate(value = na_if(intensity, 0)) |>
-    drop_na()
+    filter(intensity > 0)
   
   info <- raw |>
     select(-all_of(measure_cols$name)) |> 
@@ -108,26 +107,26 @@ normalise_to_median <- function(set) {
 }
 
 
-normalise_to_proteins <- function(pho, pro) {
-  # here we ignore a handful of phospho sites that a linked to multiple protein groups
-  pho$phospho2prot <- pho$info |>
-    select(id, protein_id = protein_ids) |>
-    filter(!str_detect(protein_id, ";")) |>
-    mutate(protein_id = as.integer(protein_id))
-  # add protein intensities and mean protein intensities across conditions to phospho data
-  pho$dat <- pho$dat |>
-    left_join(pho$phospho2prot, by = "id") |>
-    left_join(select(pro$metadata, sample, condition), by = "sample") |>
-    left_join(select(pro$dat, protein_id = id, sample, prot = value), by = c("protein_id", "sample")) |>
-    group_by(protein_id, condition) |>
-    mutate(prot_mean = mean(prot)) |>
-    ungroup() |>
-    mutate(
-      value_prot = value / prot,
-      value_prot_mean = value / prot_mean
-    ) |>
-    select(-c(protein_id, condition, prot, prot_mean))
-  pho
+normalise_to_input <- function(ip, inp, what = "abu_med") {
+  s2g_ip <- ip$metadata |> 
+    select(sample, group)
+  s2g_inp <- inp$metadata |> 
+    select(sample, group)
+  
+  minp <- inp$dat |> 
+    mutate(val = get(what)) |> 
+    left_join(s2g_inp, by = "sample") |> 
+    group_by(id, group) |> 
+    summarise(mean_input = mean(val))
+  
+  ip$dat <- ip$dat |> 
+    mutate(val = get(what)) |>
+    left_join(s2g_ip, by = "sample") |> 
+    left_join(minp, by = c("id", "group")) |> 
+    mutate(abu_input = val - mean_input) |> 
+    select(-c(val, group, mean_input))
+  
+  ip
 }
 
 

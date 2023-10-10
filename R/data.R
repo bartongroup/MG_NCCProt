@@ -28,12 +28,25 @@ add_genes <- function(res, info) {
 }
 
 download_uniprot_mapping <- function(uri) {
-  read_tsv(uri, col_names = c("uniprot", "what", "gid"), show_col_types = FALSE) |> 
-    filter(what == "Gene_Name") |> 
-    select(uniprot, gene_symbol = gid)
+  cache_file <- "cache/unigene.tsv"
+  
+  if(!dir.exists("cache"))
+    dir.create("cache")
+  if(!file.exists(cache_file)) {
+    read_tsv(uri, col_names = c("uniprot", "what", "gid"), show_col_types = FALSE) |> 
+      filter(what == "Gene_Name") |> 
+      select(uniprot, gene_symbol = gid) |> 
+      write_tsv(cache_file)
+  }
+  read_tsv(cache_file, show_col_types = FALSE)
 }
 
 
-
+id2gene <- function(pids, id_prot_gene) {
+  id_prot_gene |>
+    filter(id %in% pids) |>
+    pull(gene_symbols) |>
+    unique()
+}
 
 

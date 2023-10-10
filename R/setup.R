@@ -1,5 +1,4 @@
 UNIPROT_MAPPING_FILE <- "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
-
 METADATA_FILE <- "info/Design_experiments.xlsx"
 
 CONTRASTS_E1 <- c(
@@ -18,7 +17,6 @@ CONTRASTS_E2 <- c(
   "DRB_6h-DRB_2h"
 )
 
-
 EXPERIMENTS <- tibble::tribble(
   ~name, ~experiment, ~protocol, ~file, ~contrasts,
   "e1_input", "E1", "Input", "mq_data/Experiment 1 Input/proteinGroups_LI.txt", CONTRASTS_E1,
@@ -26,6 +24,12 @@ EXPERIMENTS <- tibble::tribble(
   "e2_ip", "E2", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt", CONTRASTS_E2
 ) |> 
   dplyr::mutate(selection = stringr::str_glue("experiment == '{experiment}' & protocol == '{protocol}'"))
+
+TREATMENTS <- tibble::tribble(
+  ~name, ~treat, ~ctr,
+  "tpl", "TPL", "treatmentTPL",
+  "drb", "DRB", "treatmentDRB"
+)
 
 PROTEINS_DATA_COLUMNS <- tibble::tribble(
   ~name, ~raw_name, ~type,
@@ -40,13 +44,12 @@ PROTEINS_DATA_COLUMNS <- tibble::tribble(
 )
 
 PROTEINS_ID_COLUMNS <- c("id")
-
 # Using %in% is necessary when the alternative is NA
 PROTEINS_FILTER <- "n_razor_unique > 2 & !(reverse %in% '+') & !(contaminant %in% '+')"
-
 MEASURE_COL_PATTERN <- "Reporter intensity corrected \\d{1,2} SB"
 
-
+FDR_LIMIT <- 0.05
+LOGFC_LIMIT <- 1
 
 
 ###-------------------------------------------------------------------

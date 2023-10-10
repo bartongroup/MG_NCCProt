@@ -7,3 +7,4 @@ _targets/
 mq_data/
 doc/*
 !doc/*qmd
+cache/

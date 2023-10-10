@@ -53,21 +53,8 @@ I normally harvest them together with the 2h time point but since they are unlab
 
 # Design
 
+@fig-design-e1 and @fig-design-e2 illustrate the design of experiments 1 and 2, respectively.
 
-```{r}
-#| label: tbl-metadata
-#| tbl-cap: Design of the experiment. Colour-shaded rows indicate grouping by experiment (E1, E2) and protocol (IP, input).
-tar_load(metadata) 
-metadata |> 
-  group_by(experiment, protocol) |> 
-  gt() |> 
-  sub_missing(
-    missing_text = ""
-  ) |> 
-  tab_options(
-    row_group.background.color = "#FFEFDB"
-  )
-```
 
 ```{r}
 #| label: fig-design-e1
@@ -81,19 +68,45 @@ knitr::include_graphics("images/design_1.png")
 knitr::include_graphics("images/design_2.png")
 ```
 
-# Data
+@tbl-metadata shows the detailed design of the experiment.
+
+```{r}
+#| label: tbl-metadata
+#| tbl-cap: Design of the experiment. Colour-shaded rows indicate grouping by experiment (E1, E2) and protocol (IP, input).
+tar_load(metadata) 
+metadata |> 
+  select(-c(bad, group, tmt_tag)) |> 
+  group_by(experiment, protocol) |> 
+  gt() |> 
+  sub_missing(
+    missing_text = ""
+  ) |> 
+  tab_options(
+    row_group.background.color = "#FFEFDB"
+  )
+```
+
+
+# Data overview
+
+MS-MS proteomics data were processed with *MaxQuant* software at Lamond Lab at SLS.
 
 ## Source and filtering
 
 Three `proteinGroups` files were used as the starting point. Data were filtered to remove reverse sequences and potential contaminants. Also, only proteins with at least 3 razor pepties were kept.
 
+## Normalisation
+
+Protein intensities were log-transformed (to base 10) and normalised to the median of each sample.
+
 ## Protein detection
 
+@fig-protein-detection shows counts of proteins detected in each sample in each experiment. As expected, input protocol returned more proteins than IP.
 
 
 ```{r}
 #| label: fig-protein-detection
-#| fig-cap: Number of detected proteins in each sample
+#| fig-cap: Number of detected proteins in each sample. Panels A, B and C show Experiment 1 IP, Experiment 1 input and Experiment 2 IP, respectively.
 #| fig-width: 8
 #| fig-height: 12
 g1 <- tar_read(fig_sample_detection_e1_ip)
@@ -102,14 +115,13 @@ g3 <- tar_read(fig_sample_detection_e2_ip)
 plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 ```
 
-
 ## Correlation matrix
 
-@fig-cormat shows Pearson's correlation coefficient for all pairs of samples. It is a bit messy. The bad sample is clearly visible as a dark row and column. The figure is based on logarithm of normalised intensities.
+@fig-cormat shows Pearson's correlation coefficient for all pairs of samples. The checkered-flag pattern indicates strong batch effects.
 
 ```{r}
 #| label: fig-cormat
-#| fig-cap: Correlation matrix for all samples.
+#| fig-cap: Correlation matrix for all samples. Panels A, B and C show Experiment 1 IP, Experiment 1 input and Experiment 2 IP, respectively.
 #| fig-width: 6
 #| fig-height: 20
 g1 <- tar_read(fig_matrix_e1_ip)
@@ -121,11 +133,12 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 
 ## PCA
 
-@fig-pca shows first two principal components, based on logarithm of normalised intensities. The bad replicate stands out.
+@fig-pca shows first two principal components. The input protocol (panel B) shows strong batch effect - the three groups of points belong to three batches (replicates).
+
 
 ```{r}
 #| label: fig-pca
-#| fig-cap: PCA decomposition based on logarithm of normalised intensity.
+#| fig-cap: PCA decomposition based on logarithm of normalised intensity. Panels A, B and C show Experiment 1 IP, Experiment 1 input and Experiment 2 IP, respectively.
 #| fig-width: 6
 #| fig-height: 14
 g1 <- tar_read(fig_pca_e1_ip)
@@ -136,11 +149,11 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 
 ## Clustering
 
-@fig-clustering shows clustering of all samples. Colours represent batches. We can see that batch effects dominate this experiment. Hierarchical clustering was calculated based on logarithm of normalised intensities, with Euclidean distance, using complete linkage method.
+@fig-clustering shows clustering of all samples. Colours represent batches. We can see that batch effects dominate this experiment. Hierarchical clustering was calculated using Euclidean distance and complete linkage method.
 
 ```{r}
 #| label: fig-clustering
-#| fig-cap: Dendrogram of samples, based on logarithm of normalised intensity. 
+#| fig-cap: Dendrogram of samples, based on logarithm of normalised intensity, with Euclidean distance and complete linkage method. Panels A, B and C show Experiment 1 IP, Experiment 1 input and Experiment 2 IP, respectively.
 #| fig-width: 8
 #| fig-height: 18
 g1 <- tar_read(fig_clustering_e1_ip)
@@ -154,23 +167,23 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3,
 
 ## Differential abundance
 
-### Description
-
-#### From limma R vignette
+### From limma R vignette
 
 For differential expression we use `limma`. It used an empirical Bayes method to squeeze the peptide-wise residual variances towards a common value (or towards a global trend) (Smyth, 2004; Phipson et al, 2016). The degrees of freedom for the individual variances are increased to reflect the extra information gained from the empirical Bayes moderation, resulting in increased statistical power to detect differential expression.
 
 For more information see [Ritchie et al. 2015](https://academic.oup.com/nar/article/43/7/e47/2414268).
 
-#### In simpler words
+### In simpler words
 
 `limma` uses a t-test, which is moderated by borrowing data across all peptides. A global variance model is built and moderation squeezes variances towards this global trend. Extreme variances (either large or small) become less extreme, which makes the test more robust to random outliers.
 
-### Full model
+## Full model
 
 First, we analyse all data using a 'full' model taking into account all potential effects:
 
 `~ treatment + time_point + batch`
+
+This approach assumes that effects of treatment and time point are independent and additive. The model will infer the effect of treatment, time point and batch from all data in experiment 1 (except for negative samples which were removed for this analysis).
 
 The differential abundance is calculated with respect to the baseline:
 
@@ -178,29 +191,78 @@ The differential abundance is calculated with respect to the baseline:
 -   time_point = Nascent
 -   batch = B1
 
-@fig-da-full shows volcano and MA plots for each of the coefficients. Each panel corresponds to one value of one coefficient, showing differential abundance with respect to the baseline.
+@fig-da-full shows volcano and MA plots for each of the coefficients. Each panel corresponds to one value of one coefficient, showing differential abundance with respect to the baseline. For example, `treatmentDRB` shows the effect of DRB inferred from all samples in experiment 1.
 
 ```{r}
 #| label: fig-da-full
-#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
-#| fig-height: 14
+#| fig-height: 12
 g1 <- tar_read(fig_volcano_full_e1_ip)
 g2 <- tar_read(fig_ma_full_e1_ip)
 plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 ```
 
-### Selected contrasts
+We see that batch effects are much larger (both in effect size in number of significantly changing proteins) than the effects of treatment and time point. In particular, both treatments (DRB and TPL) result in only small changes in protein intensity with only a few log2-fold changes greater than 1 (that i, more than a two-fold change). @fig-prots-da-full show all proteins changing significantly for treatments DRB and TPL.
 
-Next, selected contrasts, or pairs of conditions, were selected and differential abundance was carried out. @fig-da-contrasts shows volcano and MA plots for each contrast.
+
+```{r}
+#| label: fig-prots-da-full
+#| fig-cap: Normalised log-abundance of proteins significantly changing for treatment DRB (A) and TPL (B). Please note strong batch effects.
+#| fig-width: 8
+#| fig-height: 11
+g1 <- tar_read(fig_prots_da_full_drb)
+g2 <- tar_read(fig_prots_da_full_tpl)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+## Removing input
+
+Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full). When input-changing proteins are removed, we are only left with the following:
+
+ - DRB: `r tar_read(da_genes_ip_only_drb) |> sort()`
+ - TPL: `r tar_read(da_genes_ip_only_tpl) |> sort()`
+
+
+## Selected contrasts
+
+Next, selected contrasts, or pairs of conditions, were selected and differential abundance was carried out. @fig-da-contrasts shows volcano and MA plots for each contrast. There are far fewer proteins changes detected, because batch effects are not taken into account in this simple two-condition differential abundance. The only significant protein in TPL_nas vs DMSO_nas is POLR2A.
 
 ```{r}
 #| label: fig-da-contrasts
-#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
-#| fig-height: 14
+#| fig-height: 12
 g1 <- tar_read(fig_volcano_contrasts_e1_ip)
 g2 <- tar_read(fig_ma_contrasts_e1_ip)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+# Experiment 1 Input
+
+## Full model
+
+Just as the IP, input shows strong batch effects. Volcano and MA plots are shown in @fig-da-input-full.
+
+```{r}
+#| label: fig-da-input-full
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-width: 8
+#| fig-height: 12
+g1 <- tar_read(fig_volcano_full_e1_input)
+g2 <- tar_read(fig_ma_full_e1_input)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+```
+
+@fig-prots-da-input-full shows proteins changing in the Input due to treatments.
+
+```{r}
+#| label: fig-prots-da-input-full
+#| fig-cap: Normalised log-abundance of proteins significantly changing for treatment DRB (A) and TPL (B). Please note strong batch effects.
+#| fig-width: 8
+#| fig-height: 11
+g1 <- tar_read(fig_prots_da_full_input_drb)
+g2 <- tar_read(fig_prots_da_full_input_tpl)
 plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 ```
 
