@@ -6,7 +6,7 @@ suppressPackageStartupMessages({
 options(tidyverse.quiet = TRUE, dplyr.summarise.inform = FALSE)
 
 # attach R packages
-required_packages <- read.delim("R/packages", header = FALSE, col.names = "name")$name
+required_packages <- read.delim("R/packages.txt", header = FALSE, col.names = "name")$name
 tar_option_set(packages = required_packages, format = "qs")
 
 # Create dirs if necessary

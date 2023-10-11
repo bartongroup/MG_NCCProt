@@ -6,7 +6,7 @@ author:
     note: "Creator of this report"
   - name: Susanne Bandau
     affiliation: Molecular Cell and Developmental Biology
-  - name: Constance Adalbert
+  - name: Constance Alabert
     affiliation: Molecular Cell and Developmental Biology
 date: today
 date-format: "D MMMM YYYY"
@@ -37,6 +37,25 @@ tar_config_set(store = "../_targets")
 ```
 
 # Proposal
+
+## Background
+
+DNA replication results in the transient eviction of chromatin associated proteins including nucleosomes, RNAPII and transcription regulators. In Constance lab, we are studying, the re-association of chromatin factors after the passage of the replication fork (restoration of chromatin). It has been shown that transcription plays a role to promote chromatin accessibility during restoration on newly replicated DNA (Stewart-Morgan 2019, Ramachandran 2016) and regulates the stable association of several proteins to chromatin (Skalska et al. 2021).
+ 
+The aim of this project is to define the role of transcription restart in chromatin restoration following the passage of the fork. We performed iPOND (isolation of proteins on nascent DNA, Sirbu et al., 2012) experiments in asynchronized, primary like TIG-3 cells (see schematic below) to systematically analyse the protein re-association dynamics to newly replicated DNA upon transcription inhibition via quantitative mass spectrometry.
+Two transcription inhibitors were used: Triptolide which blocks RNAPII binding and DRB that blocks transcription elongation. The cells were labelled with EdU for 20min (which is a thymidine analogue and is incorporated into newly replicated DNA) and the proteins associated with the newly replicated (EdU labelled) chromatin were analysed after 20min (nascent), 1h or 2h after the passage of the replication fork (Experiment 1). For the 1h and 2h time points, the EdU is removed after 20min, the cells washed and grown for the remaining time in media containing a low concentration of thymidine to outcompete the remaining EdU in the cells. For each time point, 100 million cells (10x 15cm plates) were harvested allowing the EdU-labelling of around 20-25% of the cells that are in S-phase. To allow the isolation of EdU labelled chromatin using Streptavidin beads, Biotin is associated to EdU via a ClickIT reaction. The lysate input samples represent total cell lysates and were taken before adding the streptavidin beads.
+In general, we want to identify factors/functional groups that are changing (or are unchanged) on newly replicated chromatin upon transcription inhibition compared to the control cells. There are some proteins which can be seen as controls for the analysis. The isolation of newly replicated DNA was successful when known replication factors (PCNA, POLD1-3, PRIM1, PRIN2, MCM2-7, GINS1, GINS3, RFC1-5) are enriched on nascent chromatin compared to the later time points. In contrast, the Histone H1 subunits should be low on nascent chromatin but high in the 1h and 2h time points, since Histone H1 is part of the higher-order chromatin structure. For the successful treatment with triptolide, we would expect low level of RNA Polymerase II subunits (POLR2A,B,C…) on chromatin as well as total lysate (inputs) since triptolide leads to the removal of RNA polymerase II from chromatin and to its subsequential degradation.
+ 
+In experiment 2, we analyse the protein content of restored chromatin after 2h or 6h transcription inhibition to recapitulate whether changes observed on newly replicated chromatin are also seen on total (fully restored) chromatin or whether they are specific to newly replicated chromatin. To capture the protein content of longer stretches of chromatin, the EdU labelling was performed for 1h (instead of 20min).
+
+
+```{r}
+#| label: fig-workflow
+#| fig-cap: iPOND workflow.
+knitr::include_graphics("images/workflow.png")
+```
+
+## Experiment
 
 We have two different experiments that we would like to analyse (all proteomics data):
 
@@ -159,7 +178,7 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 g1 <- tar_read(fig_clustering_e1_ip)
 g2 <- tar_read(fig_clustering_e1_input)
 g3 <- tar_read(fig_clustering_e2_ip)
-plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3, 2))
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3, 2)) 
 ```
 
 
@@ -169,13 +188,13 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3,
 
 ### From limma R vignette
 
-For differential expression we use `limma`. It used an empirical Bayes method to squeeze the peptide-wise residual variances towards a common value (or towards a global trend) (Smyth, 2004; Phipson et al, 2016). The degrees of freedom for the individual variances are increased to reflect the extra information gained from the empirical Bayes moderation, resulting in increased statistical power to detect differential expression.
+*For differential abundance we use `limma`. It used an empirical Bayes method to squeeze the peptide-wise residual variances towards a common value (or towards a global trend) (Smyth, 2004; Phipson et al, 2016). The degrees of freedom for the individual variances are increased to reflect the extra information gained from the empirical Bayes moderation, resulting in increased statistical power to detect differential expression.*
 
 For more information see [Ritchie et al. 2015](https://academic.oup.com/nar/article/43/7/e47/2414268).
 
 ### In simpler words
 
-`limma` uses a t-test, which is moderated by borrowing data across all peptides. A global variance model is built and moderation squeezes variances towards this global trend. Extreme variances (either large or small) become less extreme, which makes the test more robust to random outliers.
+`limma` uses a t-test, which is moderated by borrowing data across all proteins. A global variance model is built and moderation squeezes variances towards this global trend. Extreme variances (either large or small) become less extreme, which makes the test more robust to random outliers.
 
 ## Full model
 
@@ -198,9 +217,8 @@ The differential abundance is calculated with respect to the baseline:
 #| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 12
-g1 <- tar_read(fig_volcano_full_e1_ip)
-g2 <- tar_read(fig_ma_full_e1_ip)
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+f <- tar_read(figs_full_e1_ip)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 ```
 
 ### Differentially abundant proteins
@@ -215,10 +233,10 @@ We see that batch effects are much larger (both in effect size in number of sign
 #| fig-height: 11
 g1 <- tar_read(fig_prots_da_full_drb_e1_ip)
 g2 <- tar_read(fig_prots_da_full_tpl_e1_ip)
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1) 
 ```
 
-### Removing input
+### Removing DA input
 
 Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full). When input-changing proteins are removed, we are only left with the following:
 
@@ -235,9 +253,8 @@ Next, selected contrasts, or pairs of conditions, were selected and differential
 #| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 12
-g1 <- tar_read(fig_volcano_contrasts_e1_ip)
-g2 <- tar_read(fig_ma_contrasts_e1_ip)
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+f <- tar_read(figs_contrasts_e1_ip)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 ```
 
 # Experiment 1 Input
@@ -251,9 +268,8 @@ Just as the IP, input shows strong batch effects. Volcano and MA plots are shown
 #| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 12
-g1 <- tar_read(fig_volcano_full_e1_input)
-g2 <- tar_read(fig_ma_full_e1_input)
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+f <- tar_read(figs_full_e1_input)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 ```
 
 @fig-prots-da-input-full shows proteins changing in the Input due to treatments.
@@ -294,9 +310,8 @@ The differential abundance is calculated with respect to the baseline:
 #| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 12
-g1 <- tar_read(fig_volcano_full_e2_ip)
-g2 <- tar_read(fig_ma_full_e2_ip)
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
+f <- tar_read(figs_full_e2_ip)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 ```
 
 ### Differentially abundant proteins
@@ -309,11 +324,45 @@ There are no differentially abundant proteins in DRB. @fig-prots-da-full-e2 show
 #| fig-width: 8
 #| fig-height: 30
 g1 <- tar_read(fig_prots_da_full_drb_e2_ip)
-g2 <- tar_read(fig_prots_da_full_tpl_e2_ip)
+g2 <- tar_read(fig_prots_da_full_tpl_e2_ip) 
 #plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 g2
 ```
 
+
+# Per batch ratios
+
+There are strong batch effects in our data. Each batch was a separate MS-MS run, therefore, we expect less condition-to-condition variability within each batch than between batches. Therefore, we can attempt using within-batch condition ratios.
+
+Consider one protein and two conditions: TPL-nas and DMSO-nas. Each of the conditions is in three replicates, where replicates 1 come from batch one, replicates 2 come from batch 2 and replicates 3 come from batch 3. Instead of testing three independent replicates in TPL vs DMSO, we can pair them. One way of achieving such pairing can be finding log-ratios between the conditions in each batch. We define the log-ratio
+
+$$
+R_{bi} = \log_2 \left( \frac{I_{bi,TPL}}{I_{bi,DMSO}} \right),
+$$
+
+for each batch $b$ and protein $i$. Here, $I_{bi}$ is the median-normalised intensity. $R_{bi}$ should a normally distributed variable centred at zero. Large positive $R_{bi}$ indicate up-regulation of the gene $i$ from DMSO to TPL, large negatives the opposite. For a given protein $i$ we have three log-ratios, one for each batch/replicate. We can then use these data to test the up- or down-regulation of the protein with respect to the null hypothesis of $R_{i} = 0$.
+
+@fig-dl-e1-ip shows results for experiment 1 IP and a selection of contrasts. There are no differentially abundant proteins for DRB vs DMSO and TPL vs DMSO at nascent time point and at 2 h. The only differnce can be seen between time points.
+
+```{r}
+#| label: fig-dl-e1-ip
+#| fig-cap: Differential abundance plots of the log-ratio data for the selected contrasts for experiment 1 IP. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1.
+#| fig-width: 8
+#| fig-height: 5
+f <- tar_read(figs_dl_e1_ip)
+f$volcano
+```
+
+@fig-dl-e2-ip shows that in experiment 2, there is a sizeable group of proteins changing between DRB and DMSO at 6h.
+
+```{r}
+#| label: fig-dl-e2-ip
+#| fig-cap: Differential abundance plots of the log-ratio data for the selected contrasts for experiment 2 IP. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1.
+#| fig-width: 5.3
+#| fig-height: 5
+f <- tar_read(figs_dl_e2_ip)
+f$volcano
+```
 
 
 # Session info

@@ -51,7 +51,8 @@ plot_sample_detection <- function(set) {
 }
 
 
-plot_sample_ridges <- function(st, what = "abu_med", name_var = "sample", fill_var = "treatment", scale = 3, bandwidth = 0.1) {
+plot_sample_ridges <- function(st, what = "abu_med", name_var = "sample", fill_var = "treatment", scale = 3,
+                               bandwidth = 0.1) {
   env <- new.env(parent = globalenv())
   env$fill_var <- fill_var
   env$scale <- scale
@@ -249,6 +250,14 @@ plot_pdist <- function(res, p = "PValue", group = "contrast", n_bins = 50) {
     facet_wrap(~grp)
 }
 
+plot_de <- function(res) {
+  list(
+    volcano = plot_volcano(res),
+    ma = plot_ma(res),
+    pdist = plot_pdist(res)
+  )
+}
+
 
 plot_up_down <- function(res, fc = "logFC", fdr = "FDR", group = "contrast", fdr_limit = 0.05) {
   r <- res |>
@@ -278,7 +287,7 @@ plot_up_down <- function(res, fc = "logFC", fdr = "FDR", group = "contrast", fdr
 
 
 plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", shape_var = "batch",
-                         ncol = NULL, point_size = 1.5, filt = "TRUE",
+                         ncol = NULL, point_size = 1.5, strip_text_size = 7.5, filt = "TRUE",
                          sample_sel = NULL) {
   meta <- set$metadata
   if (!is.null(sample_sel))
@@ -286,8 +295,8 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
   info <- set$info |> 
     filter(id %in% pids) |> 
     mutate(protein_names = str_remove(protein_names, ";.+$")) |> 
-    #mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
-    mutate(prot = gene_symbols)
+    mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
+    #mutate(prot2 = gene_symbols)
   d <- set$dat |>
     mutate(val = get(what)) |> 
     filter(id %in% pids) |>
@@ -309,6 +318,7 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
     theme_bw() +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      strip.text = element_text(size = strip_text_size),
       panel.grid.major.y = element_blank(),
       panel.grid.minor.y = element_blank()
     ) +
@@ -320,6 +330,40 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
     facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol, scales = "free_y") +
     labs(x = NULL, y = what)
 }
+
+
+plot_lograt_protein <- function(df, pids, ncol = NULL, what = "logFC", colour_var = "group", shape_var = "batch",
+                                filt = "TRUE", strip_text_size = 7.5) {
+  info <- df$info |> 
+    filter(id %in% pids) |> 
+    mutate(protein_names = str_remove(protein_names, ";.+$")) |> 
+    mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
+  d <- df$dat |> 
+    filter(id %in% pids) |> 
+    left_join(df$metadata, by = "sample") |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |> 
+    mutate(val = get(what)) |> 
+    mutate(colvar = get(colour_var), shapevar = get(shape_var)) |> 
+    left_join(info, by = "id") |> 
+    mutate(x = as_factor(group), xi = as.integer(x))
+  dm <- d |> 
+    group_by(id, prot, xi) |> 
+    summarise(M = mean(val))
+  rm(df)
+  ggplot(d, aes(x = x, y = val)) +
+    th +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      strip.text = element_text(size = strip_text_size)
+    ) +
+    geom_hline(yintercept = 0, colour = "grey50") +
+    ggbeeswarm::geom_quasirandom(aes(colour = colvar, shape = shapevar), width = 0.2) +
+    scale_colour_manual(values = okabe_ito_palette) +
+    geom_segment(data = dm, aes(x = xi - 0.3, y = M, xend = xi + 0.3, yend = M), linewidth = 1, colour = "brown") +
+    facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol) +
+    labs(x = NULL, y = expression(log[2]~I[29]/I[1]), shape = shape_var, colour = colour_var)
+}
+
 
 
 

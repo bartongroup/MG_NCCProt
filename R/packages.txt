@@ -2,7 +2,6 @@ tidyverse
 readxl
 qs
 limma
-fenr
 janitor
 ggridges
 ggbeeswarm

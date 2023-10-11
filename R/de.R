@@ -79,7 +79,7 @@ limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "s
 
 # Limma with block design by subject/donor/patient...
 limma_de_block <- function(set, formula, block_var, what = "abu_med",
-                           filt = "TRUE", names = "sample") {
+                           filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05) {
   meta <- set$metadata |>
     filter(!bad & !!rlang::parse_expr(filt)) |>
     droplevels()
@@ -97,36 +97,47 @@ limma_de_block <- function(set, formula, block_var, what = "abu_med",
     limma::eBayes()
   
   tabulate_de(fit) |>
-    add_genes(set$info)
+    add_genes(set$info) |> 
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
 }
 
 
 
 
 # one-sample limma against zero
-limma_de_ratio <- function(df, what = "logFC", id_var = "participant_id", filt = "TRUE") {
-  meta <- df$metadata |> 
+limma_de_ratio <- function(df, what = "logFC", id_var = "sample", filt = "TRUE",
+                           logfc_limit = 0, fdr_limit = 0.05) {
+  metadata <- df$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     droplevels()
   
-  tab <- dat2mat(df$dat, what = what, names = id_var)
-  tab <- tab[, as.character(meta[[id_var]])]
+  groups <- metadata$group |> 
+    as.character() |> 
+    unique()
   
-  design_mat <- cbind(Intercept = rep(1, ncol(tab)))
-  fit <- tab |>
-    limma::lmFit(design_mat) |>
-    limma::eBayes()
+  all_tab <- dat2mat(df$dat, what = what, names = id_var)
   
-  res <- limma::topTable(fit, number = 1e6, sort.by = "none") |>
+  map(groups, function(grp) {
+    meta <- metadata |> 
+      filter(group == grp)
+    tab <- all_tab[, as.character(meta[[id_var]])]
+    design_mat <- cbind(Intercept = rep(1, ncol(tab)))
+    
+    fit <- tab |>
+      limma::lmFit(design_mat) |>
+      limma::eBayes()
+    
+    limma::topTable(fit, number = 1e6, sort.by = "none") |>
       as_tibble(rownames = "id") |>
       mutate(id = as.integer(id)) |> 
       rename(FDR = adj.P.Val, PValue = P.Value) |>
       select(-c(t, B)) |> 
-      add_column(contrast = "ratio") |> 
-      drop_na() |> 
-      add_genes(df$info)
-  
-  res
+      add_column(contrast = grp) |> 
+      drop_na() 
+  }) |> 
+    list_rbind() |> 
+    add_genes(df$info) |> 
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
 }
 
 

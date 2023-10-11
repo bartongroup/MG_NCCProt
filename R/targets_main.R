@@ -14,9 +14,11 @@ targets_main <- function() {
     names = name,
     
     tar_plan(
+      # read data file
       prot = read_mq(file, PROTEINS_DATA_COLUMNS, metadata, uni_gene, sel_meta = selection, filt_data = PROTEINS_FILTER,
                      measure_col_pattern = MEASURE_COL_PATTERN),
       
+      # overview figures
       fig_detection = plot_detection(prot),
       fig_sample_detection = plot_sample_detection(prot),
       fig_sample_distribution = plot_sample_ridges(prot),
@@ -24,17 +26,30 @@ targets_main <- function() {
       fig_matrix = plot_distance_matrix(prot, min_cor = 0.6),
       fig_pca = plot_pca(prot, shape_var = "batch"),
       
+      # differential abundance
       da_full = limma_de_f(prot, "~ treatment + time_point + batch", what = "abu_med", filt = "treatment != 'Neg'",
                            logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
+      da_block = limma_de_block(prot, "~ treatment + time_point", block_var = "batch", filt = "treatment != 'Neg'",
+                                logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
       da_contrasts = limma_de(prot, contrasts = unlist(contrasts), logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
+      figs_full = plot_de(da_full),
+      figs_block = plot_de(da_block),
+      figs_contrasts = plot_de(da_contrasts),
+      exp_da_full = export_table(da_full),
+      exp_da_contrasts = export_table(da_contrasts),
       
-      fig_volcano_full = plot_volcano(da_full),
-      fig_ma_full = plot_ma(da_full),
-      fig_pdist_full = plot_pdist(da_full),
-      fig_volcano_contrasts = plot_volcano(da_contrasts),
-      fig_ma_contrasts = plot_ma(da_contrasts),
-      fig_pdist_contrasts = plot_pdist(da_contrasts),
+      # per batch log-ratios
+      lograt = make_batch_lograt(prot, unlist(contrasts)),
+      fig_sample_distribution_lograt = plot_sample_ridges(lograt, what = "logFC", fill_var = "group"),
+      fig_clustering_lograt = plot_clustering(lograt, what = "logFC", colour_var = "batch"),
+      fig_matrix_lograt = plot_distance_matrix(lograt, min_cor = 0.6, what = "logFC"),
+      fig_pca_lograt = plot_pca(lograt,  what = "logFC", colour_var = "group", shape_var = "batch"),
       
+      # differential abundance
+      dl = limma_de_ratio(lograt, fdr_limit = FDR_LIMIT),
+      figs_dl = plot_de(dl),
+      exp_dl = export_table(dl),
+
       # map through TPL and DRB
       tar_map(
         values = TREATMENTS,
@@ -61,12 +76,8 @@ targets_main <- function() {
                                 logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
     da_contrasts_inpnorm = limma_de(prot_e1_inpnorm, what = "abu_input", contrasts = contrasts_e1_ip, logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
     
-    fig_volcano_full_inpnorm = plot_volcano(da_full_inpnorm),
-    fig_ma_full_inpnorm = plot_ma(da_full_inpnorm),
-    fig_pdist_full_inpnorm = plot_pdist(da_full_inpnorm),
-    fig_volcano_contrasts_inpnorm = plot_volcano(da_contrasts_inpnorm),
-    fig_ma_contrasts_inpnorm = plot_ma(da_contrasts_inpnorm),
-    fig_pdist_contrasts_inpnorm = plot_pdist(da_contrasts_inpnorm),
+    figs_full_inpnorm = plot_de(da_full_inpnorm),
+    figs_contrasts_inpnorm = plot_de(da_contrasts_inpnorm),
     
     tar_map(
       values = TREATMENTS,

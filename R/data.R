@@ -50,3 +50,51 @@ id2gene <- function(pids, id_prot_gene) {
 }
 
 
+
+make_batch_lograt <- function(set, contrasts) {
+  meta <- map(contrasts, function(ctr) {
+    groups <- str_split(ctr, "-") |> unlist()
+    set$metadata |>
+      filter(group %in% groups) |>
+      pivot_wider(id_cols = c(batch, experiment, protocol), names_from = group, values_from = sample) |> 
+      set_names("batch", "experiment", "protocol", "sample_1", "sample_2") |>
+      mutate(across(everything(), as.character)) |> 
+      add_column(group = ctr) 
+  }) |> 
+    list_rbind() |> 
+    unite(sample, c(experiment, protocol, group, batch), remove = FALSE) |> 
+    mutate(replicate = batch, bad = FALSE)
+  
+  dat <- map(1:nrow(meta), function(i) {
+    r <- meta[i, ]
+    set$dat |> 
+      filter(sample %in% c(r$sample_1, r$sample_2)) |> 
+      pivot_wider(id_cols = id, names_from = sample, values_from = abu_med) |> 
+      drop_na() |> 
+      set_names(c("id", "s1", "s2")) |> 
+      mutate(logFC = s1 - s2) |> 
+      add_column(sample = r$sample, .after = 1) |> 
+      select(-c(s1, s2))
+  }) |> 
+    list_rbind()
+  
+  list(
+    info = set$info,
+    id_prot_gene = set$id_prot_gene,
+    dat = dat,
+    metadata = meta,
+    columns = set$columns
+  )
+}
+
+
+export_table <- function(df) {
+  path <- file.path("tab")
+  if (!dir.exists(path)) dir.create(path)
+  obj_name <- deparse(substitute(df))
+  file_name <- file.path(path, str_glue("{obj_name}.tsv"))
+  df |> 
+    mutate(across(where(is.numeric), \(x) {signif(x, 4)})) |> 
+    write_tsv(file_name)
+}
+

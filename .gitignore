@@ -8,3 +8,4 @@ mq_data/
 doc/*
 !doc/*qmd
 cache/
+tab/
