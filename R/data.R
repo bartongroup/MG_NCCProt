@@ -78,6 +78,20 @@ make_batch_lograt <- function(set, contrasts) {
   }) |> 
     list_rbind()
   
+  # Quantile normalisation
+  dat_norm <- dat |>
+    pivot_wider(id_cols = id, names_from = sample, values_from = logFC) |> 
+    column_to_rownames("id") |> 
+    as.matrix() |> 
+    preprocessCore::normalize.quantiles(keep.names = TRUE) |> 
+    as_tibble(rownames = "id") |> 
+    pivot_longer(-id, names_to = "sample", values_to = "logFC_quant") |> 
+    mutate(id = as.integer(id)) |> 
+    drop_na()
+  
+  dat <- dat |> 
+    left_join(dat_norm, by = c("id", "sample"))
+  
   list(
     info = set$info,
     id_prot_gene = set$id_prot_gene,

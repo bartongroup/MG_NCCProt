@@ -26,9 +26,9 @@ EXPERIMENTS <- tibble::tribble(
   dplyr::mutate(selection = stringr::str_glue("experiment == '{experiment}' & protocol == '{protocol}'"))
 
 TREATMENTS <- tibble::tribble(
-  ~name, ~treat, ~ctr,
-  "tpl", "TPL", "treatmentTPL",
-  "drb", "DRB", "treatmentDRB"
+  ~name, ~treat, ~ctr, ~ctr_lograt,
+  "tpl", "TPL", "treatmentTPL", "TPL_nas-DMSO_nas",
+  "drb", "DRB", "treatmentDRB", "DRB_nas-DMSO_nas"
 )
 
 PROTEINS_DATA_COLUMNS <- tibble::tribble(

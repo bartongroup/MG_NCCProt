@@ -1247,6 +1247,15 @@
       ],
       "Hash": "6b8177fd19982f0020743fadbfdbd933"
     },
+    "preprocessCore": {
+      "Package": "preprocessCore",
+      "Version": "1.62.1",
+      "Source": "Bioconductor",
+      "Requirements": [
+        "stats"
+      ],
+      "Hash": "b730f86674105ef376e99152aa5226ae"
+    },
     "prettyunits": {
       "Package": "prettyunits",
       "Version": "1.2.0",

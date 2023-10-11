@@ -41,12 +41,12 @@ targets_main <- function() {
       # per batch log-ratios
       lograt = make_batch_lograt(prot, unlist(contrasts)),
       fig_sample_distribution_lograt = plot_sample_ridges(lograt, what = "logFC", fill_var = "group"),
-      fig_clustering_lograt = plot_clustering(lograt, what = "logFC", colour_var = "batch"),
-      fig_matrix_lograt = plot_distance_matrix(lograt, min_cor = 0.6, what = "logFC"),
-      fig_pca_lograt = plot_pca(lograt,  what = "logFC", colour_var = "group", shape_var = "batch"),
+      fig_clustering_lograt = plot_clustering(lograt, what = "logFC_quant", colour_var = "batch"),
+      fig_matrix_lograt = plot_distance_matrix(lograt, min_cor = 0.6, what = "logFC_quant"),
+      fig_pca_lograt = plot_pca(lograt,  what = "logFC_quant", colour_var = "group", shape_var = "batch"),
       
       # differential abundance
-      dl = limma_de_ratio(lograt, fdr_limit = FDR_LIMIT),
+      dl = limma_de_ratio(lograt, what = "logFC_quant", fdr_limit = FDR_LIMIT),
       figs_dl = plot_de(dl),
       exp_dl = export_table(dl),
 
@@ -59,9 +59,12 @@ targets_main <- function() {
           da_samples = prot$metadata |> filter(treatment %in% c("DMSO", treat)) |> pull(sample),
           da_pids_full = da_full |> filter(contrast == ctr & sig) |> pull(id),
           da_genes_full = id2gene(da_pids_full, prot$id_prot_gene),
-          fig_prots_da_full = plot_protein(prot, pids = da_pids_full, sample_sel = da_samples, ncol = 4)
+          fig_prots_da_full = plot_protein(prot, pids = da_pids_full, sample_sel = da_samples, ncol = 4),
+          
+          dl_pids = dl |> filter(contrast == ctr_lograt & sig) |> pull(id),
+          fig_prots_dl = plot_protein(prot, pids = dl_pids, sample_sel = da_samples, ncol = 4)
         )
-      )
+      ),
     )
   )
   

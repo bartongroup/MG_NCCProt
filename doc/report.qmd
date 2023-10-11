@@ -342,7 +342,11 @@ $$
 
 for each batch $b$ and protein $i$. Here, $I_{bi}$ is the median-normalised intensity. $R_{bi}$ should a normally distributed variable centred at zero. Large positive $R_{bi}$ indicate up-regulation of the gene $i$ from DMSO to TPL, large negatives the opposite. For a given protein $i$ we have three log-ratios, one for each batch/replicate. We can then use these data to test the up- or down-regulation of the protein with respect to the null hypothesis of $R_{i} = 0$.
 
-@fig-dl-e1-ip shows results for experiment 1 IP and a selection of contrasts. There are no differentially abundant proteins for DRB vs DMSO and TPL vs DMSO at nascent time point and at 2 h. The only differnce can be seen between time points.
+Log-ratios were quantile-normalised below further analysis.
+
+## Experiment 1 IP
+
+@fig-dl-e1-ip shows results for experiment 1 IP and a selection of contrasts.
 
 ```{r}
 #| label: fig-dl-e1-ip
@@ -352,6 +356,21 @@ for each batch $b$ and protein $i$. Here, $I_{bi}$ is the median-normalised inte
 f <- tar_read(figs_dl_e1_ip)
 f$volcano
 ```
+
+### Differentially abundant proteins
+
+@fig-prots-dl show all proteins changing significantly for DRB_nas-DMSO-nas. Please note that the adjusted p-values for these proteins are all ~0.046, so we have very weak evidence for them.
+
+
+```{r}
+#| label: fig-prots-dl
+#| fig-cap: Normalised log-abundance of proteins significantly changing for treatment DRB
+#| fig-width: 8
+#| fig-height: 5
+tar_read(fig_prots_dl_drb_e1_ip)
+```
+
+## Experiment 2 IP
 
 @fig-dl-e2-ip shows that in experiment 2, there is a sizeable group of proteins changing between DRB and DMSO at 6h.
 
