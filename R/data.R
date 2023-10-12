@@ -21,8 +21,7 @@ dat2mat <- function(dat, what = "abu_norm", names = "sample") {
 
 add_genes <- function(res, info) {
   g <- info |> 
-    mutate(gene_symbol = str_remove(gene_symbols, ";.+$")) |> 
-    select(id, gene_symbol)
+    select(id, gene_symbols, majority_proteins = protein)
   res |> 
     left_join(g, by = "id")
 }
@@ -106,9 +105,9 @@ export_table <- function(df) {
   path <- file.path("tab")
   if (!dir.exists(path)) dir.create(path)
   obj_name <- deparse(substitute(df))
-  file_name <- file.path(path, str_glue("{obj_name}.tsv"))
+  file_name <- file.path(path, str_glue("{obj_name}.csv"))
   df |> 
     mutate(across(where(is.numeric), \(x) {signif(x, 4)})) |> 
-    write_tsv(file_name)
+    write_csv(file_name)
 }
 
