@@ -7,6 +7,7 @@ _targets/
 mq_data/
 doc/*
 !doc/*qmd
+!doc/images
 cache/
 tab/
 shiny/data/
