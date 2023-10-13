@@ -30,7 +30,7 @@ EXPERIMENTS <- tibble::tribble(
   ~name, ~experiment, ~protocol, ~file, ~contrasts,
   "e1_input", "E1", "Input", "mq_data/Experiment 1 Input/proteinGroups_LI.txt", CONTRASTS_E1,
   "e1_ip", "E1", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt", CONTRASTS_E1,
-  "e2_ip", "E2", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt", CONTRASTS_E2
+  "e2_ip", "E2", "IP", "mq_data/Experiment 2/proteinGroups.txt", CONTRASTS_E2
 ) |> 
   dplyr::mutate(selection = stringr::str_glue("experiment == '{experiment}' & protocol == '{protocol}'"))
 

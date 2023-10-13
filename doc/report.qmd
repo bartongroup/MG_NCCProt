@@ -337,7 +337,7 @@ There are no differentially abundant proteins in DRB. @fig-prots-da-full-e2 show
 #| label: fig-prots-da-full-e2
 #| fig-cap: Normalised log-abundance of proteins significantly changing for treatment TPL.
 #| fig-width: 8
-#| fig-height: 30
+#| fig-height: 4
 g1 <- tar_read(fig_prots_da_full_drb_e2_ip)
 g2 <- tar_read(fig_prots_da_full_tpl_e2_ip) 
 #plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)

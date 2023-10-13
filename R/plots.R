@@ -300,7 +300,7 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
   d <- set$dat |>
     mutate(val = get(what)) |> 
     filter(id %in% pids) |>
-    right_join(meta, by = "sample") |> 
+    inner_join(meta, by = "sample") |> 
     filter(!bad & !!rlang::parse_expr(filt)) |>
     droplevels() |> 
     mutate(colvar = get(colour_var), shapevar = get(shape_var)) |> 
