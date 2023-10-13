@@ -1,13 +1,22 @@
 UNIPROT_MAPPING_FILE <- "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
 METADATA_FILE <- "info/Design_experiments.xlsx"
 
+TAXONOMY_ID <- 9606
+SPECIES <- "human"
+ENSEMBL_DATASET <- "hsapiens_gene_ensembl"
+ENSEMBL_VERSION <- "110"
+
+CHROMOSOMES <- c(1:22, "X", "Y", "MT")
+
+
 CONTRASTS_E1 <- c(
   "TPL_nas-DMSO_nas",
   "DRB_nas-DMSO_nas",
   "TPL_2h-DMSO_2h",
   "DRB_2h-DMSO_2h",
   "TPL_2h-TPL_nas",
-  "DRB_2h-DRB_nas"
+  "DRB_2h-DRB_nas",
+  "DMSO_2h-DMSO_nas"
 )
 
 CONTRASTS_E2 <- c(
@@ -95,5 +104,7 @@ read_metadata <- function(file) {
       treatment = fct_relevel(treatment, "DMSO"),
       time_point = fct_relevel(time_point, "nas"),
       treatment = fct_relevel(treatment, "Neg", after = Inf)
-    )
+    ) |> 
+    arrange(experiment, protocol, treatment, time_point) |> 
+    mutate(group = as_factor(as.character(group)))
 }

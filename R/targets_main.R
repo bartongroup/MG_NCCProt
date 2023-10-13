@@ -5,6 +5,9 @@ targets_main <- function() {
   )
   
   annotations <- tar_plan(
+    mart = useEnsembl(biomart = "ensembl", dataset = ENSEMBL_DATASET, version = ENSEMBL_VERSION),
+    terms = download_functional_terms(SPECIES),
+    bm_genes = biomart_fetch_genes(mart) |> filter(chr %in% CHROMOSOMES),
     uni_gene = download_uniprot_mapping(UNIPROT_MAPPING_FILE)
   )
   
@@ -28,10 +31,11 @@ targets_main <- function() {
       
       # differential abundance
       da_full = limma_de_f(prot, "~ treatment + time_point + batch", what = "abu_med", filt = "treatment != 'Neg'",
-                           logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
+                           logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Full model"),
       da_block = limma_de_block(prot, "~ treatment + time_point", block_var = "batch", filt = "treatment != 'Neg'",
-                                logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
-      da_contrasts = limma_de(prot, contrasts = unlist(contrasts), logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT),
+                                logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Blocked"),
+      da_contrasts = limma_de(prot, contrasts = unlist(contrasts), logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Contrast selection"),
+      
       figs_full = plot_de(da_full),
       figs_block = plot_de(da_block),
       figs_contrasts = plot_de(da_contrasts),
@@ -46,10 +50,17 @@ targets_main <- function() {
       fig_pca_lograt = plot_pca(lograt,  what = "logFC_quant", colour_var = "group", shape_var = "batch"),
       
       # differential abundance
-      dl = limma_de_ratio(lograt, what = "logFC_quant", fdr_limit = FDR_LIMIT),
+      dl = limma_de_ratio(lograt, what = "logFC_quant", fdr_limit = FDR_LIMIT, base = "Log ratio"),
       figs_dl = plot_de(dl),
       exp_dl = export_table(dl),
-
+      
+      # Shiny
+      all_ids = prot$info$id,
+      iterms = index_functional_terms(terms, bm_genes, prot$id_prot_gene),
+      fterms = prepare_terms_fenr(iterms, all_ids),
+      da_shiny = bind_rows(da_full, da_contrasts, dl),
+      sav_shiny = save_data_for_shiny(name, prot, da_shiny, fterms),
+      
       # map through TPL and DRB
       tar_map(
         values = TREATMENTS,
@@ -95,6 +106,8 @@ targets_main <- function() {
   )
   
   selections <- tar_plan(
+    all_ids = prot_e1_input$info$id,
+    
     contrasts_e1_ip = unlist(EXPERIMENTS[2, ]$contrasts),
     da_pids_contrasts_tpl = da_contrasts_e1_ip |> filter(contrast == "TPL_nas-DMSO_nas" & sig) |> pull(id),
     da_pids_contrasts_drb = da_contrasts_e1_ip |> filter(contrast == "DRB_nas-DMSO_nas" & sig) |> pull(id),

@@ -11,7 +11,7 @@ tabulate_de <- function(fit) {
     select(-c(t, B)) |>
     rename(FDR = adj.P.Val, PValue = P.Value) |>
     mutate(
-      id = as.integer(id),
+      id = as.character(id),
       logFC = logFC / log10(2),    # convert into log2
       contrast = factor(contrast, levels = coefs)
     )
@@ -19,7 +19,7 @@ tabulate_de <- function(fit) {
 
 # DE for selected contrasts; if not specified, all pairs of contrasts 
 limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med",
-                     filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05) {
+                     filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05, base = "-") {
   meta <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     mutate(group = get(group_var)) |> 
@@ -46,14 +46,15 @@ limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med
   
   tabulate_de(fit) |> 
     add_genes(set$info) |> 
-    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    add_column(base = base)
 }
 
 
 
 # DE with formula
 limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "sample",
-                       logfc_limit = 1, fdr_limit = 0.05) {
+                       logfc_limit = 1, fdr_limit = 0.05, base = "-") {
   meta <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     droplevels()
@@ -67,7 +68,8 @@ limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "s
   
   tabulate_de(fit) |> 
     add_genes(set$info) |> 
-    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    add_column(base = base)
 }
 
 
@@ -79,7 +81,7 @@ limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "s
 
 # Limma with block design by subject/donor/patient...
 limma_de_block <- function(set, formula, block_var, what = "abu_med",
-                           filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05) {
+                           filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05, base = "-") {
   meta <- set$metadata |>
     filter(!bad & !!rlang::parse_expr(filt)) |>
     droplevels()
@@ -98,7 +100,8 @@ limma_de_block <- function(set, formula, block_var, what = "abu_med",
   
   tabulate_de(fit) |>
     add_genes(set$info) |> 
-    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    add_column(base = base)
 }
 
 
@@ -106,7 +109,7 @@ limma_de_block <- function(set, formula, block_var, what = "abu_med",
 
 # one-sample limma against zero
 limma_de_ratio <- function(df, what = "logFC", id_var = "sample", filt = "TRUE",
-                           logfc_limit = 0, fdr_limit = 0.05) {
+                           logfc_limit = 0, fdr_limit = 0.05, base = "-") {
   metadata <- df$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     droplevels()
@@ -129,7 +132,7 @@ limma_de_ratio <- function(df, what = "logFC", id_var = "sample", filt = "TRUE",
     
     limma::topTable(fit, number = 1e6, sort.by = "none") |>
       as_tibble(rownames = "id") |>
-      mutate(id = as.integer(id)) |> 
+      mutate(id = as.character(id)) |> 
       rename(FDR = adj.P.Val, PValue = P.Value) |>
       select(-c(t, B)) |> 
       add_column(contrast = grp) |> 
@@ -137,7 +140,8 @@ limma_de_ratio <- function(df, what = "logFC", id_var = "sample", filt = "TRUE",
   }) |> 
     list_rbind() |> 
     add_genes(df$info) |> 
-    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit)
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    add_column(base = base)
 }
 
 

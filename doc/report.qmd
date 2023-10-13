@@ -267,7 +267,7 @@ Next, selected contrasts, or pairs of conditions, were selected and differential
 #| label: fig-da-contrasts
 #| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1. A. Volcano plot. B. MA plot.
 #| fig-width: 8
-#| fig-height: 12
+#| fig-height: 15
 f <- tar_read(figs_contrasts_e1_ip)
 plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 ```
@@ -367,7 +367,7 @@ Log-ratios were quantile-normalised below further analysis.
 #| label: fig-dl-e1-ip
 #| fig-cap: Differential abundance plots of the log-ratio data for the selected contrasts for experiment 1 IP. Black points indicate proteins with significant differential abundance, defined as FDR < 0.01 and |logFC| > 1.
 #| fig-width: 8
-#| fig-height: 5
+#| fig-height: 6
 f <- tar_read(figs_dl_e1_ip)
 f$volcano
 ```

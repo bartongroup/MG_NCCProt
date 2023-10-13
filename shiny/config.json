@@ -1,0 +1,29 @@
+{
+  "title" : "Nascent chromatin capture",
+  "subtitle" : "Proteomics",
+  "data_path" : "../data",
+  "max_points" : 3000,
+  "file_names" : {
+    "data": "data.rds",
+    "metadata": "metadata.rds",
+    "features": "features.rds",
+    "de": "de.rds",
+    "terms" : "terms.rds",
+    "fterms": "fterms.rds",
+    "gse": "gse.rds"
+  },
+  "data_columns" : {
+    "abu_med" : "Normalised abundance"
+  },
+  "ontologies" : {
+    "GO" : "go",
+    "Reactome" : "re",
+    "KEGG" : "kg"
+  },
+  "experiments" : {
+    "e1_ip" : "E1 IP",
+    "e1_input" : "E1 input",
+    "e2_ip" : "E2 IP"
+  },
+  "default_data_column" : "abu_med"
+}

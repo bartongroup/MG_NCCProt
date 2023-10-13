@@ -9,3 +9,4 @@ doc/*
 !doc/*qmd
 cache/
 tab/
+shiny/data/

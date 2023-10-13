@@ -31,7 +31,7 @@ read_mq <- function(file, data_cols, metadata, uni_gene, sel_meta, filt_data, me
       filter(rlang::eval_tidy(rlang::parse_expr(filt_data)))
   }
   raw <- raw |> 
-    mutate(id = row_number(), .before = 1)
+    mutate(id = row_number() |> as.character(), .before = 1)
   
   dat <- raw |>
     select(id, all_of(measure_cols$name)) |>

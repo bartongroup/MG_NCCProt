@@ -85,7 +85,7 @@ make_batch_lograt <- function(set, contrasts) {
     preprocessCore::normalize.quantiles(keep.names = TRUE) |> 
     as_tibble(rownames = "id") |> 
     pivot_longer(-id, names_to = "sample", values_to = "logFC_quant") |> 
-    mutate(id = as.integer(id)) |> 
+    mutate(id = as.character(id)) |> 
     drop_na()
   
   dat <- dat |> 
