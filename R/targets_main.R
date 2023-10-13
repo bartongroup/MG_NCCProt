@@ -56,7 +56,7 @@ targets_main <- function() {
         names = name,
         
         tar_plan(
-          da_samples = prot$metadata |> filter(treatment %in% c("DMSO", treat)) |> pull(sample),
+          da_samples = prot$metadata |> filter(treatment %in% c("Neg", "DMSO", treat)) |> pull(sample),
           da_pids_full = da_full |> filter(contrast == ctr & sig) |> pull(id),
           da_genes_full = id2gene(da_pids_full, prot$id_prot_gene),
           fig_prots_da_full = plot_protein(prot, pids = da_pids_full, sample_sel = da_samples, ncol = 4),
@@ -100,7 +100,9 @@ targets_main <- function() {
     da_pids_contrasts_drb = da_contrasts_e1_ip |> filter(contrast == "DRB_nas-DMSO_nas" & sig) |> pull(id),
     
     da_genes_ip_only_drb = setdiff(da_genes_full_drb_e1_ip, da_genes_full_drb_e1_input),
-    da_genes_ip_only_tpl = setdiff(da_genes_full_tpl_e1_ip, da_genes_full_tpl_e1_input)
+    da_genes_ip_only_tpl = setdiff(da_genes_full_tpl_e1_ip, da_genes_full_tpl_e1_input),
+    da_ip_only_drb = da_full_e1_ip |> filter(gene_symbols %in% da_genes_ip_only_drb & contrast == "treatmentDRB") |> left_join(prot_e1_ip$info),
+    da_ip_only_tpl = da_full_e1_ip |> filter(gene_symbols %in% da_genes_ip_only_tpl & contrast == "treatmentTPL") |> left_join(prot_e1_ip$info)
   )
   
   c(

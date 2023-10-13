@@ -82,15 +82,18 @@ read_metadata <- function(file) {
     mutate(time_point = if_else(time_point == "Nascent", "nas", time_point)) |> 
     select(-sample) |> 
     unite(sample, c(experiment, protocol, treatment, time_point, replicate), remove = FALSE) |> 
+    mutate(sample = str_replace(sample, "Neg_Neg", "Neg")) |> 
     arrange(experiment, protocol, treatment, time_point) |> 
     clean_names() |> 
     select(experiment, sample, protocol, treatment, time_point, replicate, batch = tmt_batch, tmt_channel = tmt_channel_in_maxquant, tmt_tag) |> 
     mutate(batch = stringr::str_c("B", batch)) |> 
     unite(group, c(treatment, time_point), remove = FALSE) |> 
+    mutate(group = str_replace(group, "Neg_Neg", "Neg")) |> 
     mutate(across(everything(), as_factor)) |> 
     add_column(bad = FALSE) |> 
     mutate(
       treatment = fct_relevel(treatment, "DMSO"),
-      time_point = fct_relevel(time_point, "nas")
+      time_point = fct_relevel(time_point, "nas"),
+      treatment = fct_relevel(treatment, "Neg", after = Inf)
     )
 }

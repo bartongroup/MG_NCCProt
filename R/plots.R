@@ -306,6 +306,7 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
     mutate(colvar = get(colour_var), shapevar = get(shape_var)) |> 
     arrange(protocol, treatment, time_point) |> 
     unite(x, c(protocol, treatment, time_point)) |> 
+    mutate(x = str_replace(x, "Neg_Neg", "Neg")) |> 
     mutate(x = as_factor(x), xi = as.integer(x)) |> 
     left_join(info, by = "id") |> 
     select(id, sample, prot, x, xi, val, colvar, shapevar)

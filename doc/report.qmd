@@ -234,12 +234,31 @@ plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 
 ### Removing DA input
 
-Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full). When input-changing proteins are removed, we are only left with the following:
+Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full). When input-changing proteins are removed, we are only left with proteins shown in @tbl-full-ip-drb and @tbl-full-ip-tpl.
 
- - DRB: `r tar_read(da_genes_ip_only_drb) |> sort()`
- - TPL: `r tar_read(da_genes_ip_only_tpl) |> sort()`
+```{r}
+#| label: tbl-full-ip-drb
+#| tbl-cap: Proteins that are differentially abundant for DRB treatment in IP, but not in input.
+tar_read(da_ip_only_drb) |> 
+  select(Gene = gene_symbols, logFC, FDR, Description = protein_names) |> 
+  gt() |> 
+  fmt_scientific(FDR, rows = FDR < 1e-3, n_sigfig = 2) |> 
+  fmt_number(FDR, rows = FDR >= 1e-3, n_sigfig = 2) |> 
+  fmt_number(logFC, n_sigfig = 2)
+```
 
+```{r}
+#| label: tbl-full-ip-tpl
+#| tbl-cap: Proteins that are differentially abundant for TPL treatment in IP, but not in input.
+tar_read(da_ip_only_tpl) |> 
+  select(Gene = gene_symbols, logFC, FDR, Description = protein_names) |> 
+  gt() |> 
+  fmt_scientific(FDR, rows = FDR < 1e-3, n_sigfig = 2) |> 
+  fmt_number(FDR, rows = FDR >= 1e-3, n_sigfig = 2) |> 
+  fmt_number(logFC, n_sigfig = 2)
+```
 
+ 
 ## Selected contrasts
 
 Next, selected contrasts, or pairs of conditions, were selected and differential abundance was carried out. @fig-da-contrasts shows volcano and MA plots for each contrast. There are far fewer proteins changes detected, because batch effects are not taken into account in this simple two-condition differential abundance. The only significant protein in TPL_nas vs DMSO_nas is POLR2A.
@@ -385,8 +404,7 @@ Each of the three experiments (E1 IP, E1 Input and E2 IP) was carried out in thr
 
 The full model identified a handful of proteins that exhibited significant changes in response to treatments. However, these findings are derived from the analysis of all data, and were thus influenced by nascent samples, as well as samples from the 1 and 2-hour time points, while the primary biological question was about treatment effects in nascent DNA. Conversely, the contrast-based approach centred on the nascent time point (other contrasts were analysed for comparison). This method compromised statistical power due to a reduced data pool and an inability to disentangle batch effects. An alternative strategy, which involved computing log-ratios for treatments in each batch, found several proteins with significant changes. Yet, the evidence supporting these findings is tenuous, with p-values close to 0.05.
 
-
-Perhaps a different experimental design should be considered. Rather than attempting to encompass multiple treatments, time points, IP, input and negative controls, a simpler approach could prove more beneficial. With the capacity of a 10-plex TMT, a potential design could allocate one MS run to accommodate 5 DRB and 5 DMSO replicates, and another MS run for 5 TPL and 5 DMSO replicates. This would likely circumvent batch effects and improve statistical power of the experiment.
+Perhaps a different experimental design could be considered. Rather than attempting to encompass multiple treatments, time points, IP, input and negative controls, a simpler approach could prove more beneficial. With the capacity of a 10-plex TMT, a potential design could allocate one MS run to accommodate 5 DRB and 5 DMSO replicates, and another MS run for 5 TPL and 5 DMSO replicates (just nascent for simplicity). This would likely circumvent batch effects and improve statistical power of the experiment.
 
 
 # Resources
