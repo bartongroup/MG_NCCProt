@@ -50,7 +50,7 @@ targets_main <- function() {
       fig_pca_lograt = plot_pca(lograt,  what = "logFC_quant", colour_var = "group", shape_var = "batch"),
       
       # differential abundance
-      dl = limma_de_ratio(lograt, what = "logFC_quant", fdr_limit = FDR_LIMIT, base = "Log ratio"),
+      dl = limma_de_ratio(lograt, what = "logFC_quant", fdr_limit = FDR_LIMIT, logfc_limit = LOGFC_LIMIT, base = "Log ratio"),
       figs_dl = plot_de(dl),
       exp_dl = export_table(dl),
       

@@ -382,7 +382,7 @@ f$volcano
 #| fig-cap: Normalised log-abundance of proteins significantly changing for treatment DRB
 #| fig-width: 8
 #| fig-height: 5
-tar_read(fig_prots_dl_drb_e1_ip)
+#tar_read(fig_prots_dl_drb_e1_ip)
 ```
 
 ## Experiment 2 IP

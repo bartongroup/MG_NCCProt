@@ -289,6 +289,8 @@ plot_up_down <- function(res, fc = "logFC", fdr = "FDR", group = "contrast", fdr
 plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", shape_var = "batch",
                          ncol = NULL, point_size = 1.5, strip_text_size = 7.5, filt = "TRUE",
                          sample_sel = NULL) {
+  if(length(pids) == 0) return(NULL)
+  
   meta <- set$metadata
   if (!is.null(sample_sel))
     meta <- meta |> filter(sample %in% as.character(sample_sel))

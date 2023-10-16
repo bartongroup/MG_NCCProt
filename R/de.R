@@ -132,7 +132,10 @@ limma_de_ratio <- function(df, what = "logFC", id_var = "sample", filt = "TRUE",
     
     limma::topTable(fit, number = 1e6, sort.by = "none") |>
       as_tibble(rownames = "id") |>
-      mutate(id = as.character(id)) |> 
+      mutate(
+        id = as.character(id),
+        logFC = logFC / log10(2)
+      ) |> 
       rename(FDR = adj.P.Val, PValue = P.Value) |>
       select(-c(t, B)) |> 
       add_column(contrast = grp) |> 

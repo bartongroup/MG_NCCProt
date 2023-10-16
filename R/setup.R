@@ -1,5 +1,5 @@
 UNIPROT_MAPPING_FILE <- "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
-METADATA_FILE <- "info/Design_experiments.xlsx"
+METADATA_FILE <- "info/Design_experiments_4rep.xlsx"
 
 TAXONOMY_ID <- 9606
 SPECIES <- "human"
@@ -29,7 +29,7 @@ CONTRASTS_E2 <- c(
 EXPERIMENTS <- tibble::tribble(
   ~name, ~experiment, ~protocol, ~file, ~contrasts,
   "e1_input", "E1", "Input", "mq_data/Experiment 1 Input/proteinGroups_LI.txt", CONTRASTS_E1,
-  "e1_ip", "E1", "IP", "mq_data/Experiment 1 IP/proteinGroups_IP.txt", CONTRASTS_E1,
+  "e1_ip", "E1", "IP", "mq_data/Exp1 including_4thReplicate/proteinGroups.txt", CONTRASTS_E1,
   "e2_ip", "E2", "IP", "mq_data/Experiment 2/proteinGroups.txt", CONTRASTS_E2
 ) |> 
   dplyr::mutate(selection = stringr::str_glue("experiment == '{experiment}' & protocol == '{protocol}'"))
@@ -69,7 +69,8 @@ read_metadata <- function(file) {
     add_column(experiment = "E1", `6h` = "-") |> 
     mutate(`TMT channel in Maxquant` = as.character(`TMT channel in Maxquant`))
   d2 <- readxl::read_excel(file, sheet = "Experiment 2") |> 
-    rename(sample = `Sample name`, protocol = Sample, replicate = Replicate) |> 
+    rename(sample = `Sample name`, protocol = Sample, replicate = Replicate) |>
+    mutate(`TMT channel in Maxquant` = as.character(`TMT channel in Maxquant`)) |> 
     add_column(experiment = "E2", nascent = "-")
   d <- bind_rows(d1, d2)
   
@@ -94,11 +95,10 @@ read_metadata <- function(file) {
     mutate(sample = str_replace(sample, "Neg_Neg", "Neg")) |> 
     arrange(experiment, protocol, treatment, time_point) |> 
     clean_names() |> 
-    select(experiment, sample, protocol, treatment, time_point, replicate, batch = tmt_batch, tmt_channel = tmt_channel_in_maxquant, tmt_tag) |> 
-    mutate(batch = stringr::str_c("B", batch)) |> 
+    select(experiment, sample, protocol, treatment, time_point, replicate, batch, tmt_channel = tmt_channel_in_maxquant, tmt_tag) |> 
     unite(group, c(treatment, time_point), remove = FALSE) |> 
     mutate(group = str_replace(group, "Neg_Neg", "Neg")) |> 
-    mutate(across(everything(), as_factor)) |> 
+    mutate(across(c(experiment, sample, protocol, group, treatment, time_point, replicate, batch), as_factor)) |> 
     add_column(bad = FALSE) |> 
     mutate(
       treatment = fct_relevel(treatment, "DMSO"),

@@ -32,7 +32,7 @@ mod_feature_plot_ui <- function(id) {
       
       checkboxInput(
         inputId = ns("group_mean"),
-        label = "Heatmap averaged across conditions"
+        label = "Heatmap averaged across replicates"
       ),
       
       checkboxInput(
@@ -129,7 +129,8 @@ sh_plot_one_feature <- function(d, ylab, scale = c("lin", "log"), text_size, poi
     geom_beeswarm(data = d, aes(x = group, y = val, fill = replicate, shape = shape),
                   colour = "grey40", size = point_size, cex = cex) +
     geom_vline(data = vlines, aes(xintercept = x), colour = "grey80", alpha = 0.5) +
-    scale_fill_viridis_d(option = "cividis") +
+    #scale_fill_viridis_d(option = "cividis") +
+    scale_fill_manual(values = okabe_ito_palette) +
     labs(x = NULL, y = ylab, title = nm)
   
   # if(scale == "lin")

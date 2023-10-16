@@ -1,21 +1,21 @@
-read_mq <- function(file, data_cols, metadata, uni_gene, sel_meta, filt_data, measure_col_pattern) {
+read_mq <- function(mq_file, data_cols, metadata, uni_gene, sel_meta, filt_data, measure_col_pattern) {
   meta <- metadata |>
     filter(rlang::eval_tidy(rlang::parse_expr(sel_meta))) |> 
     droplevels()
 
   # All measure (reporter) columns
-  all_cols <- read_tsv(file, n_max = 0, show_col_types = FALSE) |>
+  all_cols <- read_tsv(mq_file, n_max = 0, show_col_types = FALSE) |>
     names() 
   dat_cols <- data_cols |> 
     filter(raw_name %in% all_cols)
   
   # We have several tags per TMT reporter, these are replicates
   measure_cols <- tibble(raw_name = all_cols |> str_subset(measure_col_pattern)) |> 
-    mutate(tmt_channel = str_extract(raw_name, "(?<=ted )\\d{1,2}")) |> 
-    group_by(tmt_channel) |> 
-    mutate(replicate = as.character(seq(1, n()))) |> 
-    ungroup() |> 
-    inner_join(meta, by = c("tmt_channel", "replicate")) |> 
+    mutate(
+      batch = str_extract(raw_name, "SB.+$"),
+      tmt_channel = str_extract(raw_name, "(?<=ted )\\d{1,2}")
+    ) |> 
+    inner_join(meta, by = c("tmt_channel", "batch")) |> 
     mutate(type = "n") |> 
     select(name = sample, raw_name, type)
   
@@ -23,7 +23,7 @@ read_mq <- function(file, data_cols, metadata, uni_gene, sel_meta, filt_data, me
   # types <- paste0(cols$type, collapse = "")
   
   n2n <- set_names(cols$raw_name, cols$name)
-  raw <- read_tsv(file, col_select = cols$raw_name, guess_max = 10000, show_col_types = FALSE) |>
+  raw <- read_tsv(mq_file, col_select = cols$raw_name, guess_max = 10000, show_col_types = FALSE) |>
     rename(all_of(n2n))
   # Some files have these missing
   if(all(c("n_razor_unique", "reverse", "contaminant") %in% cols$name)) {
