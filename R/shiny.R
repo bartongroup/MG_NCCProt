@@ -1,4 +1,4 @@
-write_shiny_file <- function(subdir, obj, method = c("rds", "qs")) {
+write_shiny_file <- function(subdir, obj, method = c("qs", "rds")) {
   method <- match.arg(method)
   path <- file.path("shiny", "data", subdir)
   if (!dir.exists(path)) dir.create(path)

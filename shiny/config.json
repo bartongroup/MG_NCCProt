@@ -4,13 +4,13 @@
   "data_path" : "../data",
   "max_points" : 3000,
   "file_names" : {
-    "data": "data.rds",
-    "metadata": "metadata.rds",
-    "features": "features.rds",
-    "de": "de.rds",
-    "terms" : "terms.rds",
-    "fterms": "fterms.rds",
-    "gse": "gse.rds"
+    "data": "data.qs",
+    "metadata": "metadata.qs",
+    "features": "features.qs",
+    "de": "de.qs",
+    "terms" : "terms.qs",
+    "fterms": "fterms.qs",
+    "gse": "gse.qs"
   },
   "data_columns" : {
     "abu_batch" : "Batch-corrected abundance",
