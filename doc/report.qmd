@@ -447,12 +447,15 @@ plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 
 Each of the three experiments (E1 IP, E1 Input and E2 IP) was carried out in three mass spectrometer runs, which led to three batches per experiment. This design came from the limitations of TMT spectroscopy that allows for 10 samples multiplexed together. The observed batch effects overshadowed both the time and treatment effects. Specifically, the magnitude of effects from treatments was significantly smaller than those from the batches. This rendered the identification of differentially abundant proteins due to treatment challenging. Furthermore, the presence of only a single replicate within each batch made estimation of within-batch variance impossible.
 
-The full model identified a handful of proteins that exhibited significant changes in response to treatments. However, these findings are derived from the analysis of all data, and were thus influenced by nascent samples, as well as samples from the 1 and 2-hour time points, while the primary biological question was about treatment effects in nascent DNA. Conversely, the contrast-based approach centred on the nascent time point (other contrasts were analysed for comparison). This method compromised statistical power due to a reduced data pool and an inability to disentangle batch effects. An alternative strategy, which involved computing log-ratios for treatments in each batch, found several proteins with significant changes. Yet, the evidence supporting these findings is tenuous, with p-values close to 0.05.
+Batch effects were removed by fitting a linear model to the data matrix and subtracting the estimating batch effects from the original data. This allowed for differential abundance analysis based on the full model, as well as the selection of contrasts of interest.
 
-Perhaps a different experimental design could be considered. Rather than attempting to encompass multiple treatments, time points, IP, input and negative controls, a simpler approach could prove more beneficial. With the capacity of a 10-plex TMT, a potential design could allocate one MS run to accommodate 5 DRB and 5 DMSO replicates, and another MS run for 5 TPL and 5 DMSO replicates (just nascent for simplicity). This would likely circumvent batch effects and improve statistical power of the experiment.
-
+In addition, an attempt was made to normalise IP abundances to Input abundances, by utilising mean Input abundance across replicates in each condition. These input-corrected data were analysed for differential abundance.
 
 # Resources
+
+## Interactive data explorer
+
+ - [Differential expression online app](https://shiny.compbio.dundee.ac.uk/public/marek_ncc_prot/de/)
 
 ## Downloads
 
