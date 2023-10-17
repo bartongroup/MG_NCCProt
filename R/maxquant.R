@@ -36,7 +36,8 @@ read_mq <- function(mq_file, data_cols, metadata, uni_gene, sel_meta, filt_data,
   dat <- raw |>
     select(id, all_of(measure_cols$name)) |>
     pivot_longer(-id, names_to = "sample", values_to = "intensity") |>
-    filter(intensity > 0)
+    filter(intensity > 0) |> 
+    add_column(abu_input = 0)
   
   info <- raw |>
     select(-all_of(measure_cols$name)) |> 
@@ -109,15 +110,23 @@ normalise_to_median <- function(set) {
 
 
 normalise_to_input <- function(ip, inp, what = "abu_med") {
+  mp <- map_ids(ip$info, inp$info)
+  
   s2g_ip <- ip$metadata |> 
     select(sample, group)
   s2g_inp <- inp$metadata |> 
     select(sample, group)
   
   minp <- inp$dat |> 
+    rename(id.y = id) |> 
+    right_join(mp |> filter(n == 1 & !is.na(id.y)), by = "id.y", relationship = "many-to-many") |> 
+    select(-n) |> 
+    rename(id = id.x, id_input = id.y) |> 
+    relocate(id, .before = 1) |> 
+    drop_na() |> 
     mutate(val = get(what)) |> 
     left_join(s2g_inp, by = "sample") |> 
-    group_by(id, group) |> 
+    group_by(id, id_input, group) |> 
     summarise(mean_input = mean(val))
   
   ip$dat <- ip$dat |> 
@@ -126,28 +135,33 @@ normalise_to_input <- function(ip, inp, what = "abu_med") {
     left_join(minp, by = c("id", "group")) |> 
     mutate(abu_input = val - mean_input) |> 
     select(-c(val, group, mean_input))
+  ip$mapping <- mp
   
   ip
 }
 
-
-merge_sets <- function(set1, set2) {
+# Map IDs between two sets. Based on matching gene symbols.
+map_ids <- function(info1, info2) {
   sel_ <- function(info) {
     info |> 
       select(id, x = gene_symbols) |> 
       separate_longer_delim(x, delim = ";")
   }
   
-  uni1 <- sel_(set1$info)
-  uni2 <- sel_(set2$info)
+  ig1 <- sel_(info1)
+  ig2 <- sel_(info2)
   
   # id mapping
-  mp <- left_join(uni1, uni2, by = "x", relationship = "many-to-many") |> 
+  left_join(ig1, ig2, by = "x", relationship = "many-to-many") |> 
     select(-x) |> 
     distinct() |> 
-    group_by(id.x) |> 
-    mutate(n = n()) |>
+    group_by(id.x, .drop = FALSE) |> 
+    mutate(n = length(na.omit(id.y))) |>
     ungroup()
+}
+
+merge_sets <- function(set1, set2) {
+  mp <- map_ids(set1$info, set2$info)
   
   dat2 <- set2$dat |> 
     right_join(mp |> filter(n == 1), by = c("id" = "id.y"), relationship = "many-to-many") |> 

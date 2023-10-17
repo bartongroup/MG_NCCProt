@@ -137,7 +137,7 @@ get_volma_data <- function(de, bse, ctr, plot_type) {
 #' @param sel_colour Selected point outline colour
 #'
 #' @return A ggplot object
-sh_plot_xy <- function(d, point_size = 0.1, sig_size = 0.2, sel_size = 3,
+sh_plot_xy <- function(d, point_size = 0.2, sig_size = 0.4, sel_size = 3,
                        point_colour = "grey70", sig_colour = "black", sel_fill = "blue", sel_colour = "yellow") {
   g <- ggplot(mapping = aes(x, y)) +
     theme_bw() +

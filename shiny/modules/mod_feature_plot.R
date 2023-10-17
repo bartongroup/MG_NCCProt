@@ -68,7 +68,8 @@ mod_feature_plot_ui <- function(id) {
     
     plotOutput(
       outputId = ns("feature_plot"),
-      width = "100%"
+      width = "100%",
+      height = "300px"
     )
   )
   
@@ -221,7 +222,10 @@ sh_plot_features <- function(dat, meta, scale, what = "rpkm", text_size = 14, po
   
   d <- dat |> 
     dplyr::mutate(val = get(what)) |> 
-    dplyr::left_join(meta, by = "sample")
+    dplyr::left_join(meta, by = "sample") |> 
+    drop_na()
+  
+  if(nrow(d) == 0) return(NULL)
   
   lab <- what
   

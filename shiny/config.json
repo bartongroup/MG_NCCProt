@@ -13,7 +13,9 @@
     "gse": "gse.rds"
   },
   "data_columns" : {
-    "abu_med" : "Normalised abundance"
+    "abu_batch" : "Batch-corrected abundance",
+    "abu_med" : "Normalised abundance",
+    "abu_input" : "log IP/Input"
   },
   "ontologies" : {
     "GO" : "go",
@@ -23,7 +25,8 @@
   "experiments" : {
     "e1_ip" : "E1 IP",
     "e1_input" : "E1 input",
-    "e2_ip" : "E2 IP"
+    "e2_ip" : "E2 IP",
+    "e1_inpnorm": "E1 IP/input"
   },
-  "default_data_column" : "abu_med"
+  "default_data_column" : "abu_batch"
 }

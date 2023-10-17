@@ -18,6 +18,13 @@ dat2mat <- function(dat, what = "abu_norm", names = "sample") {
     as.matrix()
 }
 
+mat2dat <- function(tab, to_what = "abu_norm", names = "sample") {
+  tab |> 
+    as.data.frame() |> 
+    rownames_to_column("id") |> 
+    pivot_longer(-id, names_to = names, values_to = to_what)
+}
+
 
 add_genes <- function(res, info) {
   g <- info |> 
@@ -50,7 +57,7 @@ id2gene <- function(pids, id_prot_gene) {
 
 
 
-make_batch_lograt <- function(set, contrasts) {
+make_batch_lograt <- function(set, contrasts, what = "abu_med") {
   meta <- map(contrasts, function(ctr) {
     groups <- str_split(ctr, "-") |> unlist()
     set$metadata |>
@@ -68,7 +75,8 @@ make_batch_lograt <- function(set, contrasts) {
     r <- meta[i, ]
     set$dat |> 
       filter(sample %in% c(r$sample_1, r$sample_2)) |> 
-      pivot_wider(id_cols = id, names_from = sample, values_from = abu_med) |> 
+      mutate(val = get(what)) |> 
+      pivot_wider(id_cols = id, names_from = sample, values_from = val) |> 
       drop_na() |> 
       set_names(c("id", "s1", "s2")) |> 
       mutate(logFC = s1 - s2) |> 
@@ -111,3 +119,24 @@ export_table <- function(df) {
     write_csv(file_name)
 }
 
+
+remove_batch_effects <- function(set, what = "abu_med", to_what = "abu_batch", names = "sample",
+                                 batch_var = "batch", formula = "~ treatment + time_point",
+                                 filt = "TRUE") {
+
+  meta <- set$metadata |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |> 
+    droplevels()
+  
+  tab <- dat2mat(set$dat, what = what)[, as.character(meta[[names]])]
+  design_mat <- model.matrix(as.formula(formula), data = meta)
+  
+  bat <- limma::removeBatchEffect(tab, batch = meta[[batch_var]], design = design_mat)
+  
+  dat <- mat2dat(bat, to_what, names)
+  set$dat <- set$dat |>   
+    inner_join(dat, by = c("id", names))
+  set$metadata <- meta
+  
+  set
+}
