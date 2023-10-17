@@ -15,8 +15,11 @@
 require(shinyWidgets)
 require(dplyr)
 require(tibble)
+require(tidyr)
 require(ggplot2)
 require(ggbeeswarm)
+
+okabe_ito_palette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "grey80", "grey30", "black")
 
 # ----- UI definitions -----
 
@@ -223,7 +226,7 @@ sh_plot_features <- function(dat, meta, scale, what = "rpkm", text_size = 14, po
   d <- dat |> 
     dplyr::mutate(val = get(what)) |> 
     dplyr::left_join(meta, by = "sample") |> 
-    drop_na()
+    tidyr::drop_na()
   
   if(nrow(d) == 0) return(NULL)
   
