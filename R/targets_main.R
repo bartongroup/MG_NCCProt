@@ -20,7 +20,7 @@ targets_main <- function() {
       # read data file
       prot_all = read_mq(file, PROTEINS_DATA_COLUMNS, metadata, uni_gene, sel_meta = selection, filt_data = PROTEINS_FILTER,
                      measure_col_pattern = MEASURE_COL_PATTERN),
-      prot = remove_batch_effects(prot_all, what = "abu_med", formula = "~ treatment + time_point", filt = "treatment != 'Neg'"),
+      prot = remove_batch_effects(prot_all, formula = "~ treatment + time_point", filt = "treatment != 'Neg'"),
       
       # overview figures
       fig_detection = plot_detection(prot),
@@ -28,11 +28,11 @@ targets_main <- function() {
       fig_sample_distribution = plot_sample_ridges(prot, what = "abu_batch"),
       fig_clustering = plot_clustering(prot, colour_var = "treatment", what = "abu_batch"),
       fig_matrix = plot_distance_matrix(prot, min_cor = 0.6, what = "abu_batch"),
-      fig_pca = plot_pca(prot, shape_var = "batch", what = "abu_batch"),
+      fig_pca = plot_pca(prot, shape_var = "batch", what = "abu_batch") + geom_text_repel(aes(label = time_point)),
       
       fig_clustering_bat = plot_clustering(prot_all, colour_var = "batch", what = "abu_med"),
       fig_matrix_bat = plot_distance_matrix(prot_all, min_cor = 0.6, what = "abu_med"),
-      fig_pca_bat = plot_pca(prot_all, shape_var = "batch", what = "abu_med"),
+      fig_pca_bat = plot_pca(prot_all, shape_var = "batch", what = "abu_med")  + geom_text_repel(aes(label = time_point)),
       
       
       # differential abundance

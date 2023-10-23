@@ -120,22 +120,48 @@ export_table <- function(df) {
 }
 
 
-remove_batch_effects <- function(set, what = "abu_med", to_what = "abu_batch", names = "sample",
-                                 batch_var = "batch", formula = "~ treatment + time_point",
-                                 filt = "TRUE") {
+
+remove_batch_effects <- function(set, what = "abu_med", names = "sample",
+                      batch_var = "batch", formula = "~ treatment + time_point",
+                      filt = "TRUE") {
+  
+  file_dat <- tempfile("data")
+  file_desc <- tempfile("description")
 
   meta <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
-    droplevels()
-  
-  tab <- dat2mat(set$dat, what = what)[, as.character(meta[[names]])]
+    droplevels() |> 
+    mutate(ibatch = as.integer(batch)) |> 
+    arrange(ibatch)
   design_mat <- model.matrix(as.formula(formula), data = meta)
   
+  dat <- set$dat |> 
+    pivot_wider(id_cols = id, names_from = !!names, values_from = !!what)
+  dat <- dat[, c("id", as.character(meta$sample))] |> 
+    rename(Protein.ID = id)
+  tab <- dat |> 
+    column_to_rownames("Protein.ID") |> 
+    as.matrix()
+  
+  desc <- meta |> 
+    rename(ID = sample) |> 
+    mutate(sample = row_number(), batch = ibatch) |> 
+    select(ID, sample, batch)
+  
+  write_tsv(dat, file_dat, na = "NaN")
+  write_csv(desc, file_desc)
+  
+  hr_combat <- HarmonizR::harmonizR(file_dat, file_desc, algorithm = "ComBat")
+  hr_limma <- HarmonizR::harmonizR(file_dat, file_desc, algorithm = "limma")
   bat <- limma::removeBatchEffect(tab, batch = meta[[batch_var]], design = design_mat)
   
-  dat <- mat2dat(bat, to_what, names)
+  dat_bat <- mat2dat(bat, "abu_batch", names)
+  dat_combat <- mat2dat(hr_combat, "abu_combat", names)
+  dat_limma <- mat2dat(hr_limma, "abu_limma", names)
   set$dat <- set$dat |>   
-    inner_join(dat, by = c("id", names))
+    inner_join(dat_combat, by = c("id", names)) |> 
+    inner_join(dat_limma, by = c("id", names)) |> 
+    inner_join(dat_bat, by = c("id", names))
   set$metadata <- meta
   
   set

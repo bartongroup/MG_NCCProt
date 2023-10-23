@@ -159,7 +159,7 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 g1 <- tar_read(fig_pca_bat_e1_ip)
 g2 <- tar_read(fig_pca_bat_e1_input)
 g3 <- tar_read(fig_pca_bat_e2_ip)
-plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C")) 
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 ```
 
 ## Clustering
@@ -310,7 +310,7 @@ There are only two proteins with interaction effects, shown in @fig-prots-intera
 #| fig-cap: Batch-corrected normalised log-abundance of proteins showing interaction between treatment and time point.
 #| fig-width: 6
 #| fig-height: 4
-tar_read(fig_prots_int_e1_ip)
+#tar_read(fig_prots_int_e1_ip)
 ```
 
 

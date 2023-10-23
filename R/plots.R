@@ -167,6 +167,12 @@ pca2xy <- function(pc, meta) {
 
 
 plot_pca <- function(set, point_size = 2, what = "abu_med", colour_var = "treatment", shape_var = "time_point") {
+  
+  env <- new.env(parent = globalenv())
+  env$point_size <- point_size
+  env$colour_var <- colour_var
+  env$shape_var <- shape_var
+
   tab <- dat2mat(set$dat, what)
   
   # remove rows with zero variance
@@ -175,11 +181,14 @@ plot_pca <- function(set, point_size = 2, what = "abu_med", colour_var = "treatm
   
   pca <- prcomp(t(tab), scale. = TRUE, center = TRUE)
   var.perc <- 100 * (pca$sdev)^2 / sum((pca$sdev)^2)
-  pca1 <- sprintf("PCA1 (%5.1f%%)", var.perc[1])
-  pca2 <- sprintf("PCA2 (%5.1f%%)", var.perc[2])
-  pca2xy(pca, set$metadata) |> 
-    plot_xy(colour_var, shape_var, point_size) +
-    labs(x = pca1, y = pca2)
+  env$pca1 <- sprintf("PCA1 (%5.1f%%)", var.perc[1])
+  env$pca2 <- sprintf("PCA2 (%5.1f%%)", var.perc[2])
+  env$xy <- pca2xy(pca, set$metadata)
+  
+  with(env, {
+    plot_xy(xy, colour_var, shape_var, point_size) +
+      labs(x = pca1, y = pca2)
+  })
 }
 
 plot_volma <- function(res, group, point_size, point_alpha) {
@@ -291,6 +300,14 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
                          sample_sel = NULL) {
   if(length(pids) == 0) return(NULL)
   
+  env <- new.env(parent = globalenv())
+  env$strip_text_size <- strip_text_size
+  env$colour_var <- colour_var
+  env$shape_var <- shape_var
+  env$point_size <- point_size
+  env$ncol <- ncol
+  env$what <- what
+  
   meta <- set$metadata
   if (!is.null(sample_sel))
     meta <- meta |> filter(sample %in% as.character(sample_sel))
@@ -299,7 +316,7 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
     mutate(protein_names = str_remove(protein_names, ";.+$")) |> 
     mutate(prot = glue::glue("{gene_symbols}: {protein_names}"))
     #mutate(prot2 = gene_symbols)
-  d <- set$dat |>
+  env$d <- set$dat |>
     mutate(val = get(what)) |> 
     filter(id %in% pids) |>
     inner_join(meta, by = "sample") |> 
@@ -312,26 +329,30 @@ plot_protein <- function(set, pids, what = "abu_med", colour_var = "treatment", 
     mutate(x = as_factor(x), xi = as.integer(x)) |> 
     left_join(info, by = "id") |> 
     select(id, sample, prot, x, xi, val, colvar, shapevar)
-  dm <- d |> 
+  env$dm <- env$d |> 
     group_by(id, prot, xi) |> 
     summarise(M = mean(val), n = n()) |> 
     filter(n > 1)
-  rm(set)
-  ggplot(d, aes(x = x, y = val)) +
-    theme_bw() +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
-      strip.text = element_text(size = strip_text_size),
-      panel.grid.major.y = element_blank(),
-      panel.grid.minor.y = element_blank()
-    ) +
-    scale_x_discrete(drop = FALSE) +
-    scale_colour_manual(values = okabe_ito_palette, name = colour_var) +
-    scale_shape_discrete(name = shape_var) +
-    ggbeeswarm::geom_quasirandom(aes(colour = colvar, shape = shapevar), width = 0.2, size = point_size, alpha = 0.8) +
-    geom_segment(data = dm, aes(x = xi - 0.3, y = M, xend = xi + 0.3, yend = M), linewidth = 1, colour = "brown") +
-    facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol, scales = "free_y") +
-    labs(x = NULL, y = what)
+  
+  
+  with(env, {
+    ggplot(d, aes(x = x, y = val)) +
+      theme_bw() +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        strip.text = element_text(size = strip_text_size),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+      ) +
+      scale_x_discrete(drop = FALSE) +
+      scale_colour_manual(values = okabe_ito_palette, name = colour_var) +
+      scale_shape_discrete(name = shape_var) +
+      ggbeeswarm::geom_quasirandom(aes(colour = colvar, shape = shapevar), width = 0.2, size = point_size, alpha = 0.8) +
+      geom_segment(data = dm, aes(x = xi - 0.3, y = M, xend = xi + 0.3, yend = M), linewidth = 1, colour = "brown") +
+      facet_wrap(~ prot, labeller = label_wrap_gen(), ncol = ncol, scales = "free_y") +
+      labs(x = NULL, y = what)
+  })
+
 }
 
 
