@@ -20,7 +20,7 @@ targets_main <- function() {
       # read data file
       prot_all = read_mq(file, PROTEINS_DATA_COLUMNS, metadata, uni_gene, sel_meta = selection, filt_data = PROTEINS_FILTER,
                      measure_col_pattern = MEASURE_COL_PATTERN),
-      prot = remove_batch_effects(prot_all, formula = "~ treatment + time_point", filt = "treatment != 'Neg'"),
+      prot = remove_batch_effects(prot_all, formula = "~ treatment + time_point"),
       
       # overview figures
       fig_detection = plot_detection(prot),
@@ -30,17 +30,20 @@ targets_main <- function() {
       fig_matrix = plot_distance_matrix(prot, min_cor = 0.6, what = "abu_batch"),
       fig_pca = plot_pca(prot, shape_var = "batch", what = "abu_batch") + geom_text_repel(aes(label = time_point)),
       
-      fig_clustering_bat = plot_clustering(prot_all, colour_var = "batch", what = "abu_med"),
-      fig_matrix_bat = plot_distance_matrix(prot_all, min_cor = 0.6, what = "abu_med"),
-      fig_pca_bat = plot_pca(prot_all, shape_var = "batch", what = "abu_med")  + geom_text_repel(aes(label = time_point)),
+      fig_clustering_med = plot_clustering(prot_all, colour_var = "batch", what = "abu_med"),
+      fig_matrix_med = plot_distance_matrix(prot_all, min_cor = 0.6, what = "abu_med"),
+      fig_pca_med = plot_pca(prot, shape_var = "batch", what = "abu_med")  + geom_text_repel(aes(label = time_point)),
+      fig_pca_batch = plot_pca(prot, shape_var = "batch", what = "abu_batch")  + geom_text_repel(aes(label = time_point)),
+      fig_pca_limma = plot_pca(prot, shape_var = "batch", what = "abu_limma")  + geom_text_repel(aes(label = time_point)),
+      fig_pca_combat = plot_pca(prot, shape_var = "batch", what = "abu_combat")  + geom_text_repel(aes(label = time_point)),
       
       
       # differential abundance
-      da_full = limma_de_f(prot, "~ treatment + time_point", what = "abu_batch",
+      da_full = limma_de_f(prot, "~ treatment + time_point", what = "abu_limma", filt = "treatment != 'Neg'",
                            logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Full model"),
-      da_int = limma_de_f(prot, "~ treatment * time_point", what = "abu_batch",
+      da_int = limma_de_f(prot, "~ treatment * time_point", what = "abu_limma", filt = "treatment != 'Neg'",
                            logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Full model"),
-      da_contrasts = limma_de(prot, what = "abu_batch", contrasts = unlist(contrasts),
+      da_contrasts = limma_de(prot, what = "abu_limma", contrasts = unlist(contrasts),
                               logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Contrast selection"),
 
       figs_full = plot_de(da_full),
@@ -82,10 +85,10 @@ targets_main <- function() {
           da_samples = prot$metadata |> filter(treatment %in% c("Neg", "DMSO", treat)) |> pull(sample),
           da_pids_full = da_full |> filter(contrast == ctr & sig) |> pull(id),
           da_genes_full = id2gene(da_pids_full, prot$id_prot_gene),
-          fig_prots_da_full = plot_protein(prot, what = "abu_batch", pids = da_pids_full, sample_sel = da_samples, ncol = 4),
+          fig_prots_da_full = plot_protein(prot, what = "abu_limma", pids = da_pids_full, sample_sel = da_samples, ncol = 4),
           
           dl_pids = dl |> filter(contrast == ctr_lograt & sig) |> pull(id),
-          fig_prots_dl = plot_protein(prot, what = "abu_batch", pids = dl_pids, sample_sel = da_samples, ncol = 4)
+          fig_prots_dl = plot_protein(prot, what = "abu_limma", pids = dl_pids, sample_sel = da_samples, ncol = 4)
         )
       ),
     )
@@ -95,7 +98,7 @@ targets_main <- function() {
     prot_e1_inpnorm = normalise_to_input(prot_e1_ip, prot_e1_input, what = "abu_batch"),
     
     da_full_inpnorm = limma_de_f(prot_e1_inpnorm, "~ treatment + time_point", what = "abu_input",
-                                 logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT,
+                                 logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, filt = "treatment != 'Neg'",
                                  base = "Full model"),
     da_contrasts_inpnorm = limma_de(prot_e1_inpnorm, what = "abu_input", contrasts = contrasts_e1_ip,
                                     logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Selected contrasts"),
@@ -130,11 +133,18 @@ targets_main <- function() {
     contrasts_e1_ip = unlist(EXPERIMENTS[2, ]$contrasts),
     da_pids_contrasts_tpl = da_contrasts_e1_ip |> filter(contrast == "TPL_nas-DMSO_nas" & sig) |> pull(id),
     da_pids_contrasts_drb = da_contrasts_e1_ip |> filter(contrast == "DRB_nas-DMSO_nas" & sig) |> pull(id),
+    da_pids_contrasts_neg = da_contrasts_e1_ip |> filter(contrast == "DMSO_2h-Neg" & sig) |> pull(id),
     
     da_genes_ip_only_drb = setdiff(da_genes_full_drb_e1_ip, da_genes_full_drb_e1_input),
     da_genes_ip_only_tpl = setdiff(da_genes_full_tpl_e1_ip, da_genes_full_tpl_e1_input),
-    da_ip_only_drb = da_full_e1_ip |> filter(gene_symbols %in% da_genes_ip_only_drb & contrast == "treatmentDRB") |> left_join(prot_e1_ip$info),
-    da_ip_only_tpl = da_full_e1_ip |> filter(gene_symbols %in% da_genes_ip_only_tpl & contrast == "treatmentTPL") |> left_join(prot_e1_ip$info),
+    
+    da_ip = da_full_e1_ip |>
+      filter(sig & str_detect(contrast, "treatment")) |>
+      mutate(
+        Input = gene_symbols %in% da_genes_full_drb_e1_input,
+        Negative = id %in% da_pids_contrasts_neg
+      ) |> 
+      left_join(prot_e1_ip$info),
     
     n_ip_all = prot_e1_ip$info |> nrow(),
     n_inpnorm_unique = prot_e1_inpnorm$mapping |> filter(n == 1 & !is.na(id.y)) |> pull(id.x) |> unique() |> length(),

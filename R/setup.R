@@ -16,14 +16,17 @@ CONTRASTS_E1 <- c(
   "DRB_2h-DMSO_2h",
   "TPL_2h-TPL_nas",
   "DRB_2h-DRB_nas",
-  "DMSO_2h-DMSO_nas"
+  "DMSO_2h-DMSO_nas",
+  "DMSO_2h-Neg"
 )
 
 CONTRASTS_E2 <- c(
   "TPL_6h-DMSO_6h",
   "DRB_6h-DMSO_6h",
   "TPL_6h-TPL_2h",
-  "DRB_6h-DRB_2h"
+  "DRB_6h-DRB_2h",
+  "DMSO_2h-Neg",
+  "DMSO_6h-Neg"
 )
 
 EXPERIMENTS <- tibble::tribble(
@@ -57,8 +60,8 @@ PROTEINS_ID_COLUMNS <- c("id")
 PROTEINS_FILTER <- "n_razor_unique > 2 & !(reverse %in% '+') & !(contaminant %in% '+')"
 MEASURE_COL_PATTERN <- "Reporter intensity corrected \\d{1,2} SB"
 
-FDR_LIMIT <- 0.05
-LOGFC_LIMIT <- 1
+FDR_LIMIT <- 0.01
+LOGFC_LIMIT <- 0
 
 
 ###-------------------------------------------------------------------

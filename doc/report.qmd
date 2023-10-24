@@ -179,15 +179,21 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3,
 
 # Removing batch effects
 
-@fig-cormat-bat, @fig-pca-bat and @fig-clustering-bat shows that strong batch effects exist in data. These batches are due to separate MS/MS runs. For further processing batch effects are removed using *limma's* function `removeBatchEffects`, which uses linear modelling to estimate and remove the unwanted variation. It fits a linear model to the data where the batches (or other confounding factors) are used as covariates. The function then subtracts the estimated batch effects from the original data. The function was used with the following parameters:
+@fig-cormat-bat, @fig-pca-bat and @fig-clustering-bat shows that strong batch effects exist in data. These batches are due to separate MS/MS runs. For further processing batch effects are removed using `HarmonizR` with method `limma`. `HarmonizR` finds all batch combinations appearing in the input data and generates sub-dataframes bases on these combinations.
 
+Batch-corrected data are used for downstream analysis. @fig-pca-batch-comparison compares batch-removal methods considered.
+
+```{r}
+#| label: fig-pca-batch-comparison
+#| fig-cap: Comparison of batch-removal methods. A. Uncorrected data. B. HarmonizR limma correction. C. HarmonizR ComBat correction.
+#| fig-width: 6
+#| fig-height: 12
+g1 <- tar_read(fig_pca_med_e1_ip)
+g2 <- tar_read(fig_pca_limma_e1_ip)
+g3 <- tar_read(fig_pca_combat_e1_ip)
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C")) 
 ```
-x_corrected <- limma::removeBatchEffect(x, batch = "batch", design = design_matrix)
-```
 
-where `x` is data matrix and `design_matrix` is a design matrix crated using the formula `~ treatment + time_point`. Because there is only one negative sample in a given time point, treatment and batch, the coefficients for it cannot be established. Therefore, negative samples are not included in batch correction.
-
-Batch-corrected data are used for downstream analysis.
 
 ## Corrected data
 
@@ -201,7 +207,7 @@ Batch-corrected data are used for downstream analysis.
 g1 <- tar_read(fig_pca_e1_ip)
 g2 <- tar_read(fig_pca_e1_input)
 g3 <- tar_read(fig_pca_e2_ip)
-plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C")) 
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 ```
 
 ```{r}
@@ -212,7 +218,7 @@ plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"))
 g1 <- tar_read(fig_clustering_e1_ip)
 g2 <- tar_read(fig_clustering_e1_input)
 g3 <- tar_read(fig_clustering_e2_ip)
-plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3, 2))
+plot_grid(g1, g2, g3, ncol = 1, labels = c("A", "B", "C"), rel_heights = c(3, 3, 2)) 
 ```
 
 
@@ -230,13 +236,19 @@ For more information see [Ritchie et al. 2015](https://academic.oup.com/nar/arti
 
 `limma` uses a t-test, which is moderated by borrowing data across all proteins. A global variance model is built and moderation squeezes variances towards this global trend. Extreme variances (either large or small) become less extreme, which makes the test more robust to random outliers.
 
+### Significant proteins
+
+Statistically significantly changing proteins are defined based on the false discovery rate, FDR < 0.01.
+
 ## Full model
 
 First, we analyse all batch-corrected data using a 'full' model taking into account all potential effects:
 
 `~ treatment + time_point`
 
-This approach assumes that effects of treatment and time point are independent and additive. The model will infer the effect of treatment, time point and batch from all data in experiment 1 (except for negative samples which were removed for this analysis).
+Negative samples were removed before applying this model, as they create redundant levels and problematic linear model - the issue is that we have the same level "Neg" both in treatment and time points, that is, there is no separate negative control for treatments and time points.
+
+This approach assumes that effects of treatment and time point are independent and additive. The model will infer the effect of treatment, time point and batch from all data in experiment 1.
 
 The differential abundance is calculated with respect to the baseline:
 
@@ -247,7 +259,7 @@ The differential abundance is calculated with respect to the baseline:
 
 ```{r}
 #| label: fig-da-full
-#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point`. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 6
 #| fig-height: 10
 f <- tar_read(figs_full_e1_ip)
@@ -263,36 +275,62 @@ plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 #| label: fig-prots-da-full
 #| fig-cap: Batch-corrected, normalised log-abundance of proteins significantly changing for treatment DRB (A) and TPL (B). Please note strong batch effects.
 #| fig-width: 8
-#| fig-height: 11
+#| fig-height: 30
 g1 <- tar_read(fig_prots_da_full_drb_e1_ip)
 g2 <- tar_read(fig_prots_da_full_tpl_e1_ip)
 plot_grid(g1, g2, labels = c("A", "B"), ncol = 1)
 ```
 
-### Removing DA input
+### Removing DA input and Negative control
 
-Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full). When input-changing proteins are removed, we are only left with proteins shown in @tbl-full-ip-drb and @tbl-full-ip-tpl.
+Note that @fig-prots-da-full shows all proteins changing in IP, but some of them are also differentially abundant in the Input (see @fig-prots-da-input-full) and Negative (see @fig-da-contrasts). @tbl-full-ip-drb and @tbl-full-ip-tpl shows these proteins.
+
+```{r}
+da_ip <- tar_read(da_ip) |> 
+  select(contrast, Gene = gene_symbols, logFC, FDR, Description = protein_names, Input, Negative) |> 
+  mutate(Input = if_else(Input, "yes", "")) |> 
+  mutate(Negative = if_else(Negative, "yes", ""))
+```
 
 ```{r}
 #| label: tbl-full-ip-drb
-#| tbl-cap: Proteins that are differentially abundant for DRB treatment in IP, but not in input.
-tar_read(da_ip_only_drb) |> 
-  select(Gene = gene_symbols, logFC, FDR, Description = protein_names) |> 
+#| tbl-cap: Proteins that are differentially abundant for DRB treatment in IP. Proteins significantly changing in the Input and Negative are marked.
+da_ip |> 
+  filter(contrast == "treatmentDRB") |> 
+  select(-contrast) |> 
   gt() |> 
   fmt_scientific(FDR, rows = FDR < 1e-3, n_sigfig = 2) |> 
   fmt_number(FDR, rows = FDR >= 1e-3, n_sigfig = 2) |> 
-  fmt_number(logFC, n_sigfig = 2)
+  fmt_number(logFC, n_sigfig = 2) |> 
+  cols_width(FDR ~ "110px") |> 
+  tab_style(
+    style = list(cell_fill(color = "beige")),
+    locations = cells_body(
+      columns = everything(),
+      rows = Input != "yes" & Negative != "yes"
+    )
+  )
 ```
 
 ```{r}
 #| label: tbl-full-ip-tpl
-#| tbl-cap: Proteins that are differentially abundant for TPL treatment in IP, but not in input.
-tar_read(da_ip_only_tpl) |> 
-  select(Gene = gene_symbols, logFC, FDR, Description = protein_names) |> 
+#| tbl-cap: Proteins that are differentially abundant for TPL treatment in IP. Proteins significantly changing in the Input and Negative are marked.
+da_ip |> 
+  filter(contrast == "treatmentTPL") |> 
+  select(-contrast) |> 
   gt() |> 
   fmt_scientific(FDR, rows = FDR < 1e-3, n_sigfig = 2) |> 
   fmt_number(FDR, rows = FDR >= 1e-3, n_sigfig = 2) |> 
-  fmt_number(logFC, n_sigfig = 2)
+  fmt_number(logFC, n_sigfig = 2) |> 
+  cols_width(FDR ~ "110px") |> 
+    tab_style(
+    style = list(cell_fill(color = "beige")),
+    locations = cells_body(
+      columns = everything(),
+      rows = Input != "yes" & Negative != "yes"
+    )
+  )
+
 ```
 
 ## Model with interactions
@@ -303,16 +341,16 @@ The model used in the previous Section assumed that `treatment` and `time_point`
 ~ treatment + time_point + treatment:time_point
 ```
 
-There are only two proteins with interaction effects, shown in @fig-prots-interaction. The interaction is weak and the only obvious thing is the drop at DRB_2h in SATB. Warning: there are data gaps here and the picture is incomplete.
+There are no significant proteins in interaction terms.
 
 ```{r}
-#| label: fig-prots-interaction
-#| fig-cap: Batch-corrected normalised log-abundance of proteins showing interaction between treatment and time point.
+#| label: fig-da-int
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + treatment:time_point`. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 6
-#| fig-height: 4
-#tar_read(fig_prots_int_e1_ip)
+#| fig-height: 12
+f <- tar_read(figs_int_e1_ip)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 ```
-
 
  
 ## Selected contrasts
@@ -321,7 +359,7 @@ Next, selected contrasts, or pairs of conditions, were selected and differential
 
 ```{r}
 #| label: fig-da-contrasts
-#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 15
 f <- tar_read(figs_contrasts_e1_ip)
@@ -336,7 +374,7 @@ Volcano and MA plots are shown in @fig-da-input-full.
 
 ```{r}
 #| label: fig-da-input-full
-#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point + batch`. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 6
 #| fig-height: 10
 f <- tar_read(figs_full_e1_input)
@@ -349,10 +387,10 @@ plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 #| label: fig-prots-da-input-full
 #| fig-cap: Batch-corrected normalised log-abundance of proteins significantly changing for treatment DRB (A) and TPL (B). Please note strong batch effects.
 #| fig-width: 8
-#| fig-height: 15
+#| fig-height: 40
 g1 <- tar_read(fig_prots_da_full_drb_e1_input)
 g2 <- tar_read(fig_prots_da_full_tpl_e1_input)
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1, rel_heights = c(4, 6))
+plot_grid(g1, g2, labels = c("A", "B"), ncol = 1, rel_heights = c(2, 1))
 ```
 
 
@@ -371,7 +409,7 @@ First, we analyse all data using a 'full' model. The differential abundance is c
 
 ```{r}
 #| label: fig-da-full-e2
-#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point`. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 6
 f <- tar_read(figs_full_e2_ip)
@@ -384,12 +422,13 @@ plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
 
 ```{r}
 #| label: fig-prots-da-full-e2
-#| fig-cap: Normalised log-abundance of proteins significantly changing for treatments A. DRB and B. TPL.
+#| fig-cap: Normalised log-abundance of proteins significantly changing for treatments in TPL.
 #| fig-width: 8
-#| fig-height: 12
-g1 <- tar_read(fig_prots_da_full_drb_e2_ip)
+#| fig-height: 5
+#g1 <- tar_read(fig_prots_da_full_drb_e2_ip)
 g2 <- tar_read(fig_prots_da_full_tpl_e2_ip) 
-plot_grid(g1, g2, labels = c("A", "B"), ncol = 1, rel_heights = c(2, 3))
+g2
+#plot_grid(g1, g2, labels = c("A", "B"), ncol = 1, rel_heights = c(2, 3))
 ```
 
 
@@ -397,11 +436,11 @@ plot_grid(g1, g2, labels = c("A", "B"), ncol = 1, rel_heights = c(2, 3))
 
 ```{r}
 #| label: fig-da-contrasts-e2
-#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 6
 #| fig-height: 10
 f <- tar_read(figs_contrasts_e2_ip)
-plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1) 
 ```
 
 
@@ -423,18 +462,18 @@ The calculated differences are median-normalised log-10-abundance corrected for 
 
 ```{r}
 #| label: fig-da-full-inpnorm
-#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point`. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance plots of the full model `~ treatment + time_point`. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 6
 #| fig-height: 10
 f <- tar_read(figs_full_inpnorm)
-plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1) 
 ```
 
 ## Selected contrasts
 
 ```{r}
 #| label: fig-da-contrasts-inpnorm
-#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance, defined as FDR < 0.05 and |logFC| > 1. A. Volcano plot. B. MA plot.
+#| fig-cap: Differential abundance for a selection of contrasts. Black points indicate proteins with significant differential abundance. A. Volcano plot. B. MA plot.
 #| fig-width: 8
 #| fig-height: 12
 f <- tar_read(figs_contrasts_inpnorm)

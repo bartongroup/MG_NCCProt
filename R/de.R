@@ -20,16 +20,12 @@ tabulate_de <- function(fit) {
 # DE for selected contrasts; if not specified, all pairs of contrasts 
 limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med",
                      filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05, base = "-") {
-  meta <- set$metadata |> 
+  metadata <- set$metadata |> 
     filter(!bad & !!rlang::parse_expr(filt)) |> 
     mutate(group = get(group_var)) |> 
     filter(!is.na(group)) |> 
     droplevels()
-  groups <- unique(as.character(meta$group)) 
-  design_mat <- model.matrix(~ 0 + group, data = meta)
-  colnames(design_mat) <- groups
-  
-  tab <- dat2mat(set$dat, what, names)[, as.character(meta[[names]])]
+  groups <- unique(as.character(metadata$group)) 
   
   if (is.null(contrasts)) {
     contrasts <- expand_grid(x = as_factor(groups), y = as_factor(groups)) |>
@@ -37,14 +33,22 @@ limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med
       unite(contrast, c(y, x), sep = "-") |>
       pull(contrast)
   }
-  contrast_mat <- limma::makeContrasts(contrasts = contrasts, levels = design_mat)
-
-  fit <- tab |>
-    limma::lmFit(design_mat) |>
-    limma::contrasts.fit(contrasts = contrast_mat) |>
-    limma::eBayes()
   
-  tabulate_de(fit) |> 
+  map(contrasts, function(ctr) {
+    grps <- str_split_1(ctr, "-")
+    meta <- metadata |> 
+      filter(group %in% grps) |> 
+      droplevels()
+    design_mat <- model.matrix(~ group, data = meta)
+    tab <- dat2mat(set$dat, what, names)[, as.character(meta[[names]])]
+    
+    tab |>
+      limma::lmFit(design_mat) |>
+      limma::eBayes() |> 
+      tabulate_de() |> 
+      mutate(contrast = ctr)
+  }) |> 
+    list_rbind() |> 
     add_genes(set$info) |> 
     mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
     add_column(base = base)
