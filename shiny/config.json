@@ -13,7 +13,8 @@
     "gse": "gse.qs"
   },
   "data_columns" : {
-    "abu_batch" : "Batch-corrected abundance",
+    "abu_limma" : "HarmonizR limma",
+    "abu_combat" : "HarmonizR combat",
     "abu_med" : "Normalised abundance",
     "abu_input" : "log IP/Input"
   },
@@ -28,5 +29,5 @@
     "e2_ip" : "E2 IP",
     "e1_inpnorm": "E1 IP/input"
   },
-  "default_data_column" : "abu_batch"
+  "default_data_column" : "abu_limma"
 }

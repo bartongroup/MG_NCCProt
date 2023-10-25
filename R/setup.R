@@ -23,10 +23,14 @@ CONTRASTS_E1 <- c(
 CONTRASTS_E2 <- c(
   "TPL_6h-DMSO_6h",
   "DRB_6h-DMSO_6h",
+  "TPL_2h-DMSO_2h",
+  "DRB_2h-DMSO_2h",
   "TPL_6h-TPL_2h",
   "DRB_6h-DRB_2h",
   "DMSO_2h-Neg",
-  "DMSO_6h-Neg"
+  "DMSO_6h-Neg",
+  "TPL_6h-Neg",
+  "DRB_6h-Neg"
 )
 
 EXPERIMENTS <- tibble::tribble(

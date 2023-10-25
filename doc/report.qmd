@@ -363,7 +363,7 @@ Next, selected contrasts, or pairs of conditions, were selected and differential
 #| fig-width: 8
 #| fig-height: 15
 f <- tar_read(figs_contrasts_e1_ip)
-plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1) 
 ```
 
 # Experiment 1 Input
@@ -440,7 +440,7 @@ g2
 #| fig-width: 6
 #| fig-height: 10
 f <- tar_read(figs_contrasts_e2_ip)
-plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1) 
+plot_grid(f$volcano, f$ma, labels = c("A", "B"), ncol = 1)  
 ```
 
 

@@ -127,7 +127,7 @@ sh_plot_one_feature <- function(d, ylab, scale = c("lin", "log"), text_size, poi
       text = element_text(size = text_size),
       panel.grid = element_blank(),
       axis.text.x = element_text(angle = 45, hjust = 1),
-      legend.position = "none"
+      legend.position = "bottom"
     ) +
     scale_shape_identity() +  # necessary for shape mapping
     geom_beeswarm(data = d, aes(x = group, y = val, fill = replicate, shape = shape),
@@ -135,6 +135,7 @@ sh_plot_one_feature <- function(d, ylab, scale = c("lin", "log"), text_size, poi
     geom_vline(data = vlines, aes(xintercept = x), colour = "grey80", alpha = 0.5) +
     #scale_fill_viridis_d(option = "cividis") +
     scale_fill_manual(values = okabe_ito_palette) +
+    guides(fill = guide_legend(override.aes = list(shape = 21))) +
     labs(x = NULL, y = ylab, title = nm)
   
   # if(scale == "lin")
