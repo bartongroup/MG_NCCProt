@@ -29,6 +29,9 @@ read_mq <- function(mq_file, data_cols, metadata, uni_gene, sel_meta, filt_data,
   if(all(c("n_razor_unique", "reverse", "contaminant") %in% cols$name)) {
     raw <- raw |> 
       filter(rlang::eval_tidy(rlang::parse_expr(filt_data)))
+  } else {
+    raw <- raw |> 
+      filter(!str_detect(protein, "^(CON__|REV__)"))
   }
   raw <- raw |> 
     mutate(id = row_number() |> as.character(), .before = 1)
@@ -41,7 +44,7 @@ read_mq <- function(mq_file, data_cols, metadata, uni_gene, sel_meta, filt_data,
   
   info <- raw |>
     select(-all_of(measure_cols$name)) |> 
-    mutate(gene_symbols = if_else(is.na(gene_symbols), proteins, gene_symbols))
+    mutate(gene_symbols = if_else(is.na(gene_symbols), protein, gene_symbols))
   
   # gene_symbols is from maxQuant table
   # gene_symbol is from Uniprot mapping of individual proteins
@@ -176,8 +179,7 @@ merge_sets <- function(set1, set2) {
   )
   cols <- bind_rows(set1$columns, set2$columns)
   
-  dat <- bind_rows(set1$dat, dat2) |> 
-    select(-starts_with("abu"))
+  dat <- bind_rows(set1$dat, dat2)
   
   set <- list(
     columns = cols,
@@ -191,3 +193,10 @@ merge_sets <- function(set1, set2) {
   set |> normalise_to_median()
 }
 
+
+select_bottom_perc <- function(set, perc = 0.2) {
+  set$info |> 
+    mutate(p = percent_rank(ibaq)) |> 
+    filter(p <= perc) |> 
+    pull(id)
+}

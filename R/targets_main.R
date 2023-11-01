@@ -152,11 +152,74 @@ targets_main <- function() {
     n_inpnorm_multi = prot_e1_inpnorm$mapping |> filter(n > 1) |> pull(id.x) |> unique() |> length()
   )
   
+  for_manuscript <- tar_plan(
+    pdf_volma_e1_ip_drb = mn_plot_volma(da_full_e1_ip, "treatmentDRB", "e1_ip_drb"),
+    pdf_volma_e1_ip_tpl = mn_plot_volma(da_full_e1_ip, "treatmentTPL", "e1_ip_tpl"),
+    pdf_volma_e1_inp_drb = mn_plot_volma(da_full_e1_input, "treatmentDRB", "e1_input_drb"),
+    pdf_volma_e1_inp_tpl = mn_plot_volma(da_full_e1_input, "treatmentTPL", "e1_input_tpl"),
+    pdf_volma_e1_ip_t2 = mn_plot_volma(da_full_e1_ip, "time_point2h", "e1_ip_2h", with_names = FALSE),
+    
+    pdf_ma_e1_ip_drb = mn_plot_ma(da_full_e1_ip, "treatmentDRB") |> gp("ma_e1_ip_drb", 6, 6),
+    pdf_ma_e1_ip_tpl = mn_plot_ma(da_full_e1_ip, "treatmentTPL") |> gp("ma_e1_ip_tpl", 6, 6),
+    pdf_ma_e1_inp_drb = mn_plot_ma(da_full_e1_input, "treatmentDRB") |> gp("ma_e1_input_drb", 6, 6),
+    pdf_ma_e1_inp_tpl = mn_plot_ma(da_full_e1_input, "treatmentTPL") |> gp("ma_e1_input_tpl", 6, 6),
+    pdf_ma_e1_ip_t2 = mn_plot_ma(da_full_e1_ip, "time_point2h", with_names = FALSE) |> gp("ma_e1_ip_2h", 6, 6),
+    
+    
+    pdf_vol_e1_ip_drb_dnarep = mn_volcano_pathways(da_full_e1_ip, "treatmentDRB", terms, dna_repair) |> gp("volcano_e1_ip_drb_dnarep", 6, 6),
+    pdf_vol_e1_ip_tpl_dnarep = mn_volcano_pathways(da_full_e1_ip, "treatmentTPL", terms, dna_repair) |> gp("volcano_e1_ip_tpl_dnarep", 6, 6),
+    pdf_vol_e1_ip_drb_transfac = mn_volcano_tfs(da_full_e1_ip, "treatmentDRB") |> gp("volcano_e1_ip_drb_transfac", 6, 6),
+    pdf_vol_e1_ip_tpl_transfac = mn_volcano_tfs(da_full_e1_ip, "treatmentTPL") |> gp("volcano_e1_ip_tpl_transfac", 6, 6),
+    pdf_vol_e1_ip_2h_transfac = mn_volcano_tfs(da_full_e1_ip, "time_point2h") |> gp("volcano_e1_ip_2h_transfac", 6, 6),
+    
+    prots_heat = read_proteins_for_heatmaps("for_manuscript/Protein names for heatmaps.xlsx"),
+    prots_transfac = get_tfs("for_manuscript/TF_List_LambertAnddb.xlsx") |>
+      add_column(figure = "transfac") |> 
+      rename(name = gene_symbol),
+    csv_prot_heat_ip = make_proteins_for_heatmaps(prot_e1_ip, bind_rows(prots_heat, prots_transfac), "ip"),
+    csv_prot_heat_input = make_proteins_for_heatmaps(prot_e1_input, prots_heat, "input"),
+    csv_prot_all_heat = all_protein_heatmap_data(prot_e1_ip),
+    
+    prots_transfac_da = da_full_e1_ip |> filter(contrast == "time_point2h" & gene_symbols %in% prots_transfac$name),
+    sav_transvac_da = prots_transfac_da |> select(id, logFC, PValue, FDR, gene_symbols) |> mutate(across(where(is.numeric), ~signif(.x, 4))) |> write_csv("for_manuscript/transfac_volcano.csv"),
+    
+    genes_inter = get_interactor_ids("for_manuscript/RNAPII interactor_fromFigS6.xlsx"),
+    genes_short = get_short_lived_ids("for_manuscript/Figure 1J_Short half life list_RPE1 cells.xlsx"),
+    ids_bottom_20 = select_bottom_perc(prot_e1_ip, 0.2),
+    
+    pdf_prots_sig_all = mn_plot_significant(da_full_e1_ip, "All proteins", "drp_tpl_all"),
+    pdf_prots_sig_b20 = mn_plot_significant(da_full_e1_ip, "Bottom 20%", "drp_tpl_bottom_20", ids_bottom_20, sel_are_ids = TRUE),
+    pdf_prots_sig_inter = mn_plot_significant(da_full_e1_ip, "RNAPII interactors", "drp_tpl_inter", genes_inter$gene_symbol),
+    pdf_prots_sig_short = mn_plot_significant(da_full_e1_ip, "Short lived", "drp_tpl_short", genes_short$gene_symbol),
+    
+    sel_inter_sig = mn_find_sig_sel(da_full_e1_ip, genes_inter$gene_symbol),
+    sel_shrt_sig = mn_find_sig_sel(da_full_e1_ip, genes_short$gene_symbol),
+    
+    pdf_transfac_count = mn_plot_transfac_counts() |> gp("transfac_count", 4, 3.7),
+    
+    pdf_pca_e1 = plot_pca(prot_e1_ip, shape_var = "time_point", what = "abu_limma", filt = "treatment != 'Neg'") |> gp("pca_e1", 5, 4),
+    pdf_pca_e2 = plot_pca(prot_e2_ip, shape_var = "time_point", what = "abu_limma", filt = "treatment != 'Neg'") |> gp("pca_e2", 5, 4),
+    
+    modeller_genes = read_protein_groups_id("for_manuscript/modellers.xlsx", da_full_e1_ip),
+    #fig_volcano_modellers = mn_volcano_group(da_full_e1_ip, "treatmentTPL", modeller_genes),
+    modeller_boot_tpl_p = gse_boot(da_full_e1_ip, "treatmentTPL", modeller_genes, n_boot = 100000),
+    modeller_boot_drb_p = gse_boot(da_full_e1_ip, "treatmentDRB", modeller_genes, n_boot = 100000),
+    
+    pdf_modeller_boot = mn_plot_modeller_boot(modeller_boot_drb_p, modeller_boot_tpl_p) |> gp("modeller_boot", 5, 2.2),
+  )
+  
+  versions <- tar_plan(
+    harmonizr_version = packageVersion("HarmonizR"),
+    limma_version = packageVersion("limma")
+  )
+  
   c(
     annotations,
     read_metadata,
     map_experiments,
     selections,
-    input_normalisation
+    input_normalisation,
+    for_manuscript,
+    versions
   )
 }

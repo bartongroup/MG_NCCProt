@@ -10,4 +10,7 @@ doc/*
 !doc/images
 cache/
 tab/
+fig/
 shiny/data/
+for_manuscript/proteins_for_heatmaps_*
+~$*

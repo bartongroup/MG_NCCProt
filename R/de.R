@@ -50,7 +50,10 @@ limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med
   }) |> 
     list_rbind() |> 
     add_genes(set$info) |> 
-    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    mutate(
+      sig = FDR < fdr_limit & abs(logFC) >= logfc_limit,
+      log10Pvalue = -log10(PValue)
+    ) |> 
     add_column(base = base)
 }
 
@@ -72,7 +75,10 @@ limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "s
   
   tabulate_de(fit) |> 
     add_genes(set$info) |> 
-    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    mutate(
+      sig = FDR < fdr_limit & abs(logFC) >= logfc_limit,
+      log10Pvalue = -log10(PValue)
+    ) |> 
     add_column(base = base)
 }
 

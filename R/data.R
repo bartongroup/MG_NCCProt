@@ -166,3 +166,11 @@ remove_batch_effects <- function(set, what = "abu_med", names = "sample",
   
   set
 }
+
+
+get_ids <- function(da) {
+  da |> 
+    select(id, gene_symbol = gene_symbols) |> 
+    separate_longer_delim(gene_symbol, delim = ";") |> 
+    distinct()
+}

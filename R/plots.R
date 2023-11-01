@@ -5,6 +5,11 @@ gs <- function(gg, name, width, height) {
          width = width, height = height, dpi = 300)
 }
 
+gp <- function(gg, name, width, height) {
+  ggsave(filename = file.path("fig", paste0(name, ".pdf")), plot = gg, device = "pdf",
+         width = width, height = height)
+}
+
 th <- ggplot2::theme_bw() +
   ggplot2::theme(panel.grid = ggplot2::element_blank())
 
@@ -166,14 +171,19 @@ pca2xy <- function(pc, meta) {
 }
 
 
-plot_pca <- function(set, point_size = 2, what = "abu_med", colour_var = "treatment", shape_var = "time_point") {
+plot_pca <- function(set, point_size = 2, what = "abu_med", colour_var = "treatment", shape_var = "time_point",
+                     filt = "TRUE") {
   
   env <- new.env(parent = globalenv())
   env$point_size <- point_size
   env$colour_var <- colour_var
   env$shape_var <- shape_var
 
-  tab <- dat2mat(set$dat, what)
+  meta <- set$metadata |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |> 
+    droplevels()
+  
+  tab <- dat2mat(set$dat, what)[, as.character(meta$sample)]
   
   # remove rows with zero variance
   tab <- tab[apply(tab, 1, function(v) sum(is.na(v)) == 0), ]
@@ -183,7 +193,7 @@ plot_pca <- function(set, point_size = 2, what = "abu_med", colour_var = "treatm
   var.perc <- 100 * (pca$sdev)^2 / sum((pca$sdev)^2)
   env$pca1 <- sprintf("PCA1 (%5.1f%%)", var.perc[1])
   env$pca2 <- sprintf("PCA2 (%5.1f%%)", var.perc[2])
-  env$xy <- pca2xy(pca, set$metadata)
+  env$xy <- pca2xy(pca, meta)
   
   with(env, {
     plot_xy(xy, colour_var, shape_var, point_size) +

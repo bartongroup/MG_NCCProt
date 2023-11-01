@@ -55,6 +55,7 @@ PROTEINS_DATA_COLUMNS <- tibble::tribble(
   "protein_names", "Protein names", "c",
   "sequence_length", "Sequence length", "n",
   "n_razor_unique", "Razor + unique peptides", "n",
+  "ibaq", "iBAQ", "n",
   "reverse", "Reverse", "c",
   "contaminant", "Potential contaminant", "c"
 )
