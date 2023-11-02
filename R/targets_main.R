@@ -76,6 +76,16 @@ targets_main <- function() {
       da_shiny = bind_rows(da_full, da_contrasts, dl),
       sav_shiny = save_data_for_shiny(name, prot, da_shiny, fterms),
       
+      bottom_20_genes = select_bottom_perc(prot, 0.2),
+      gene_groups_all = bind_rows(gene_groups, bottom_20_genes),
+      
+      # Gene group plots
+      pfd_sig_groups = mn_plot_significant_groups(da_full, gene_groups_all, name),
+      
+      modeller_genes = read_protein_groups_id("for_manuscript/modellers.xlsx", da_full),
+      repair_genes = read_protein_groups_id("for_manuscript/dna_repair.xlsx", da_full),
+      
+      
       # map through TPL and DRB
       tar_map(
         values = TREATMENTS,
@@ -88,9 +98,15 @@ targets_main <- function() {
           fig_prots_da_full = plot_protein(prot, what = "abu_limma", pids = da_pids_full, sample_sel = da_samples, ncol = 4),
           
           dl_pids = dl |> filter(contrast == ctr_lograt & sig) |> pull(id),
-          fig_prots_dl = plot_protein(prot, what = "abu_limma", pids = dl_pids, sample_sel = da_samples, ncol = 4)
+          fig_prots_dl = plot_protein(prot, what = "abu_limma", pids = dl_pids, sample_sel = da_samples, ncol = 4),
+          
+          # Modeller
+          modeller_boot = gse_boot(da_full, ctr, treat, experiment, protocol, modeller_genes, n_boot = 100000),
+          
+          # DNA repair
+          repair_boot = gse_boot(da_full, ctr, treat, experiment, protocol, repair_genes, n_boot = 100000),
         )
-      ),
+      )
     )
   )
   
@@ -183,29 +199,23 @@ targets_main <- function() {
     prots_transfac_da = da_full_e1_ip |> filter(contrast == "time_point2h" & gene_symbols %in% prots_transfac$name),
     sav_transvac_da = prots_transfac_da |> select(id, logFC, PValue, FDR, gene_symbols) |> mutate(across(where(is.numeric), ~signif(.x, 4))) |> write_csv("for_manuscript/transfac_volcano.csv"),
     
-    genes_inter = get_interactor_ids("for_manuscript/RNAPII interactor_fromFigS6.xlsx"),
-    genes_short = get_short_lived_ids("for_manuscript/Figure 1J_Short half life list_RPE1 cells.xlsx"),
-    ids_bottom_20 = select_bottom_perc(prot_e1_ip, 0.2),
+    gene_groups = get_gene_groups(),
     
-    pdf_prots_sig_all = mn_plot_significant(da_full_e1_ip, "All proteins", "drp_tpl_all"),
-    pdf_prots_sig_b20 = mn_plot_significant(da_full_e1_ip, "Bottom 20%", "drp_tpl_bottom_20", ids_bottom_20, sel_are_ids = TRUE),
-    pdf_prots_sig_inter = mn_plot_significant(da_full_e1_ip, "RNAPII interactors", "drp_tpl_inter", genes_inter$gene_symbol),
-    pdf_prots_sig_short = mn_plot_significant(da_full_e1_ip, "Short lived", "drp_tpl_short", genes_short$gene_symbol),
-    
-    sel_inter_sig = mn_find_sig_sel(da_full_e1_ip, genes_inter$gene_symbol),
-    sel_shrt_sig = mn_find_sig_sel(da_full_e1_ip, genes_short$gene_symbol),
+    #sel_inter_sig = mn_find_sig_sel(da_full_e1_ip, genes_inter$gene_symbol),
+    #sel_shrt_sig = mn_find_sig_sel(da_full_e1_ip, genes_short$gene_symbol),
     
     pdf_transfac_count = mn_plot_transfac_counts() |> gp("transfac_count", 4, 3.7),
     
     pdf_pca_e1 = plot_pca(prot_e1_ip, shape_var = "time_point", what = "abu_limma", filt = "treatment != 'Neg'") |> gp("pca_e1", 5, 4),
     pdf_pca_e2 = plot_pca(prot_e2_ip, shape_var = "time_point", what = "abu_limma", filt = "treatment != 'Neg'") |> gp("pca_e2", 5, 4),
     
-    modeller_genes = read_protein_groups_id("for_manuscript/modellers.xlsx", da_full_e1_ip),
-    #fig_volcano_modellers = mn_volcano_group(da_full_e1_ip, "treatmentTPL", modeller_genes),
-    modeller_boot_tpl_p = gse_boot(da_full_e1_ip, "treatmentTPL", modeller_genes, n_boot = 100000),
-    modeller_boot_drb_p = gse_boot(da_full_e1_ip, "treatmentDRB", modeller_genes, n_boot = 100000),
-    
-    pdf_modeller_boot = mn_plot_modeller_boot(modeller_boot_drb_p, modeller_boot_tpl_p) |> gp("modeller_boot", 5, 2.2),
+    modeller_boot_all = bind_rows(modeller_boot_tpl_e2_ip, modeller_boot_drb_e2_ip, modeller_boot_drb_e1_input,
+                                  modeller_boot_tpl_e1_input, modeller_boot_drb_e1_ip, modeller_boot_tpl_e1_ip) |> 
+      mutate(group = fct_relevel(group, "SWI/SNF complexes BAF", after = Inf)),
+    pdf_modeller_boot = mn_plot_group_boot(modeller_boot_all) |> gp("remodeller_boot", 5, 4),
+    repair_boot_all = bind_rows(repair_boot_tpl_e2_ip, repair_boot_drb_e2_ip, repair_boot_drb_e1_input,
+                                repair_boot_tpl_e1_input,repair_boot_drb_e1_ip, repair_boot_tpl_e1_ip),
+    pdf_repair_boot = mn_plot_group_boot(repair_boot_all) |> gp("dna_repair_boot", 5, 4)
   )
   
   versions <- tar_plan(

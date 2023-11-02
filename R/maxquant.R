@@ -195,8 +195,25 @@ merge_sets <- function(set1, set2) {
 
 
 select_bottom_perc <- function(set, perc = 0.2) {
-  set$info |> 
+  info <- set$info
+  
+  # Use mean intensity if ibaq not found
+  if(!("ibaq" %in% colnames(info))) {
+    ib <- set$dat |> 
+      group_by(id) |> 
+      summarise(ibaq = mean(intensity, na.rm = TRUE))
+    info <- info |> 
+      inner_join(ib, by = "id")
+  }
+  
+  info |> 
     mutate(p = percent_rank(ibaq)) |> 
     filter(p <= perc) |> 
-    pull(id)
+    separate_longer_delim(gene_symbols, delim = ";") |> 
+    select(id) |> 
+    distinct() |> 
+    add_column(
+      group = "Bottom 20%",
+      group_name = "bottom_20"
+    )
 }

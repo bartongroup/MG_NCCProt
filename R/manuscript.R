@@ -325,22 +325,31 @@ mn_plot_significant_ <- function(da, fdr_limit = 0.01) {
 }
 
 
-get_interactor_ids <- function(prot_file) {
+get_interactor_genes <- function(prot_file) {
   sheets <- excel_sheets(prot_file)
   map(sheets, function(sheet) {
     read_excel(prot_file, sheet = sheet) |> 
       janitor::clean_names() |> 
       select(gene_symbol = protein_names) |> 
-      add_column(interactor = sheet)
+      add_column(interactor = sheet, group = "RNAPII interactor", group_name = "inter")
   }) |> 
     list_rbind()
 }
 
-get_short_lived_ids <- function(prot_file) {
+get_short_lived_genes <- function(prot_file) {
   read_excel(prot_file) |> 
     janitor::clean_names() |> 
-    select(protein = uniprot_id, gene_symbol)
+    select(protein = uniprot_id, gene_symbol) |> 
+    add_column(group = "Short lived", group_name = "short")
 }
+
+get_gene_groups <- function() {
+  bind_rows(
+    get_interactor_genes("for_manuscript/RNAPII interactor_fromFigS6.xlsx"),
+    get_short_lived_genes("for_manuscript/Figure 1J_Short half life list_RPE1 cells.xlsx")
+  )
+}
+
 
 
 full_gene_sel <- function(da, sel = NULL) {
@@ -421,13 +430,31 @@ mn_plot_significant <- function(da, title, suffix, sel = NULL, sel_are_ids = FAL
       scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
       scale_fill_manual(values = okabe_ito_palette) +
       labs(x = NULL, y = "Percentage", fill = "Selection", title = str_glue("{title} ({tot})"))
-    gp(g, str_glue("significant_{suffix}_{fdr_limit}"), 3, 3)
+    gp(g, str_glue("significant_drb_tpl_{suffix}_{fdr_limit}"), 3, 3)
   }
   
   pl(0.01)
   pl(0.05)
 }
 
+mn_plot_significant_groups <- function(da, gene_groups, name) {
+  nm <- str_replace(name, "_", " ")
+  mn_plot_significant(da, str_glue("All proteins {nm}"), str_glue("all_{name}"))
+
+  gene_groups |> 
+    group_split(group, group_name) |> 
+    map(function(w) {
+      # Bottom 20% are ids, the rest are gene_symbols
+      if(all(is.na(w$id))) {
+        sel <- w$gene_symbol
+        sel_are_ids <- FALSE
+      } else {
+        sel <- w$id
+        sel_are_ids <- TRUE
+      }
+      mn_plot_significant(da, paste(w$group[1], nm), paste0(w$group_name[1], "_", name), sel, sel_are_ids)
+    })
+}
 
 dna_repair_pathways <- c(
   "GO:0006281",
@@ -456,15 +483,15 @@ mn_volcano_pathways <- function(da, ctr, terms, pathways) {
 }
 
 # genes is a tibble with gene_symbol and group
-mn_volcano_group <- function(da, ctr, genes) {
+mn_volcano_group <- function(da, ctr, genes, with_names = TRUE) {
   pgr <- da |> 
     get_ids() |> 
-    right_join(genes, by = "gene_symbol") |> 
+    right_join(select(genes, gene_symbol, group), by = "gene_symbol", relationship = "many-to-many") |> 
     select(id, group) |> 
     drop_na() |> 
     distinct()
   
-  mn_plot_volcano(da, ctr, pgr, with_names = TRUE, palette = "black") + theme(legend.position = "none")
+  mn_plot_volcano(da, ctr, pgr, with_names = with_names) + theme(legend.position = "none")
 }
 
 
@@ -572,21 +599,23 @@ mn_ip_input_correlation <- function(set_ip, set_input, what = "abu_limma") {
 }
 
 read_protein_groups_id <- function(efile, da) {
-  genes <- read_excel(efile)
+  genes <- read_excel(efile) |> 
+    select(group, gene_symbol) |> 
+    distinct()
   
   gene2id <- da |> 
     get_ids() |> 
-    right_join(genes, by = "gene_symbol")
+    right_join(genes, by = "gene_symbol", relationship = "many-to-many")
   
   print("Missing:")
-  print(gene2id |> filter(is.na(id)))
+  gene2id |> filter(is.na(id)) |> select(group, gene_symbol) |> print(n = 1000)
   
   gene2id |> 
     drop_na()
 }
 
 
-gse_boot <- function(da, ctr, genes, n_boot = 1000, seed = 42) {
+gse_boot <- function(da, ctr, treat, expmt, protcl, genes, n_boot = 1000, seed = 42) {
   ds <- da |> 
     filter(contrast == ctr)
   
@@ -608,31 +637,112 @@ gse_boot <- function(da, ctr, genes, n_boot = 1000, seed = 42) {
       m_obs = m_obs,
       n_boot = n_boot,
       n_less = length(which(boot < m_obs)),
-      p_boot =  n_less / n_boot
+      p_boot =  n_less / n_boot,
+      contrast = ctr,
+      experiment = expmt,
+      protocol = protcl,
+      treatment = treat,
+    )
+  }
+  
+  do_boot_p <- function(data) {
+    n_obs <- nrow(data)
+    m_obs <- mean_fdr(data$id)
+    n_chunk <- 5
+    n_subboot <- n_boot / n_chunk
+    boot <- parallel::mclapply(1:n_chunk, function(i) {
+      map(1:n_subboot, function(k) {
+        sel <- sample(all_ids, n_obs)
+        mean_fdr(sel)
+      })
+    }, mc.cores = 6) |> 
+      unlist()
+    tibble(
+      n_obs = n_obs,
+      m_obs = m_obs,
+      n_boot = n_boot,
+      n_less = length(which(boot < m_obs)),
+      p_boot =  n_less / n_boot,
+      contrast = ctr,
+      experiment = expmt,
+      protocol = protcl,
+      treatment = treat,
     )
   }
   
   set.seed(seed)
   genes |> 
+    select(group, id, gene_symbol) |> 
     nest(data = c(id, gene_symbol)) |> 
-    mutate(res = map(data, ~do_boot(.x))) |> 
+    mutate(res = map(data, ~do_boot_p(.x))) |> 
     unnest(res) |> 
-    select(group, size = n_obs, mean_logFC = m_obs, n_boot, n_less, p_value = p_boot)
+    select(group, experiment, protocol, treatment, size = n_obs, mean_logFC = m_obs, n_boot, n_less, p_value = p_boot)
 }
 
 
-mn_plot_modeller_boot <- function(mdl_drb, mdl_tpl) {
+mn_plot_group_boot <- function(mdl) {
   
-  mdl_drb |>
-    add_column(treatment = "DRB") |> 
-    bind_rows(mdl_tpl |> add_column(treatment = "TPL")) |> 
-  ggplot(aes(x = group, y = mean_logFC, fill = log10(p_value))) +
+  m <- mdl |>
+    unite(expm, c(experiment, protocol), sep = " ") |> 
+    mutate(expm = fct_relevel(expm, c("E1 IP", "E2 IP"))) |> 
+    group_by(expm, treatment) |> 
+    mutate(
+      fdr = p.adjust(p_value, method = "BH"),
+      sig = p_value < 0.05
+    )
+  ms <- m |> 
+    filter(sig) |> 
+    mutate(ast = (abs(mean_logFC) + 0.03) * sign(mean_logFC))
+  
+  m |> 
+    ggplot(aes(x = group, y = mean_logFC)) +
     th +
     theme(legend.position = "right") +
-    geom_col() +
+    geom_col(aes(fill = log10(p_value))) +
+    geom_hline(yintercept = 0, colour = "grey50") +
+    geom_point(data = ms, aes(y = ast), shape = 8, size = 0.8) +
     scale_fill_viridis_c(option = "cividis") +
-    facet_wrap(~treatment) +
-    scale_y_continuous(expand = expansion(mult = c(0.05, 0)), breaks = c(-0.4, -0.2, 0)) +
+    facet_grid(expm ~ treatment) +
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.05)), breaks = c(-0.4, -0.2, 0, 0.2)) +
     coord_flip() +
     labs(y = expression(mean~log[2]~FC), x = NULL, fill = expression(log[10]~P))
+}
+
+
+mn_venn_groups <- function(da, gene_groups, name) {
+  ds <- da |> 
+    filter(str_detect(contrast, "treatment")) |> 
+    mutate(sig = FDR < 0.05) |> 
+    select(id, sig, gene_symbols) |> 
+    distinct()
+  
+  genes_grp <- gene_groups |> 
+    group_split(group, group_name) |> 
+    map(function(w) {
+      # Bottom 20% are ids, the rest are gene_symbols
+      if(!all(is.na(w$id))) {
+        dg <- ds |> filter(id %in% w$id)
+      } else {
+        dg <- full_gene_sel(ds, w$gene_symbol)
+      }
+      dg |> 
+        select(id) |> 
+        distinct() |> 
+        add_column(group = w$group[1])
+    }) |> 
+    list_rbind()
+  genes_sig <- ds |> 
+    filter(sig) |> 
+    select(id) |> 
+    add_column(group = "Significant")
+  
+  gns <- bind_rows(genes_sig, genes_grp) |> 
+    mutate(val = TRUE) |> 
+    pivot_wider(id_cols = id, names_from = group, values_from = val, values_fill = FALSE) |> 
+    select(-id)
+  
+  pdf("fig/euler_sig_bottom.pdf");plot(euler(gns[, c(1, 2)]), quantities = TRUE);dev.off()
+  pdf("fig/euler_sig_inter.pdf");plot(euler(gns[, c(1, 3)]), quantities = TRUE);dev.off()
+  pdf("fig/euler_sig_short.pdf");plot(euler(gns[, c(1, 4)]), quantities = TRUE);dev.off()
+    
 }
