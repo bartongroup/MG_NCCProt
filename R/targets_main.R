@@ -52,6 +52,11 @@ targets_main <- function() {
       exp_da_full = export_table(da_full),
       exp_da_contrasts = export_table(da_contrasts),
       
+      # Supplementary tables
+      tab_heat = table_heatmap(prot) |> write_csv(paste0("for_manuscript/tables/", experiment, "-", protocol, "_heatmap.csv")),
+      tab_da_full = da_table(da_full) |> write_csv(paste0("for_manuscript/tables/", experiment, "-", protocol, "_volcano_full.csv")),
+      tab_da_sel = da_table(da_contrasts |> filter(contrast == "DMSO_2h-DMSO_nas")) |> write_csv(paste0("for_manuscript/tables/", experiment, "-", protocol, "_volcano_dmso_2h_nas.csv")),
+      
       # interacting proteins
       sel_int = da_int |> filter(sig & str_detect(contrast, ":")),
       fig_prots_int = plot_protein(prot, what = "abu_batch", pids = sel_int, ncol = 4),
@@ -162,10 +167,10 @@ targets_main <- function() {
       ) |> 
       left_join(prot_e1_ip$info),
     
-    n_ip_all = prot_e1_ip$info |> nrow(),
-    n_inpnorm_unique = prot_e1_inpnorm$mapping |> filter(n == 1 & !is.na(id.y)) |> pull(id.x) |> unique() |> length(),
-    n_inpnorm_none = prot_e1_inpnorm$mapping |> filter(n == 0) |> pull(id.x) |> unique() |> length(),
-    n_inpnorm_multi = prot_e1_inpnorm$mapping |> filter(n > 1) |> pull(id.x) |> unique() |> length()
+    n_ip_all = prot_e1_ip$info |> nrow()
+    #n_inpnorm_unique = prot_e1_inpnorm$mapping |> filter(n == 1 & !is.na(id.y)) |> pull(id.x) |> unique() |> length(),
+    #n_inpnorm_none = prot_e1_inpnorm$mapping |> filter(n == 0) |> pull(id.x) |> unique() |> length(),
+    #n_inpnorm_multi = prot_e1_inpnorm$mapping |> filter(n > 1) |> pull(id.x) |> unique() |> length()
   )
   
   for_manuscript <- tar_plan(
@@ -194,7 +199,6 @@ targets_main <- function() {
       rename(name = gene_symbol),
     csv_prot_heat_ip = make_proteins_for_heatmaps(prot_e1_ip, bind_rows(prots_heat, prots_transfac), "ip"),
     csv_prot_heat_input = make_proteins_for_heatmaps(prot_e1_input, prots_heat, "input"),
-    csv_prot_all_heat = all_protein_heatmap_data(prot_e1_ip),
     
     prots_transfac_da = da_full_e1_ip |> filter(contrast == "time_point2h" & gene_symbols %in% prots_transfac$name),
     sav_transvac_da = prots_transfac_da |> select(id, logFC, PValue, FDR, gene_symbols) |> mutate(across(where(is.numeric), ~signif(.x, 4))) |> write_csv("for_manuscript/transfac_volcano.csv"),
@@ -214,10 +218,22 @@ targets_main <- function() {
       mutate(group = fct_relevel(group, "SWI/SNF complexes BAF", after = Inf)),
     pdf_modeller_boot = mn_plot_group_boot(modeller_boot_all) |> gp("remodeller_boot", 5, 4),
     repair_boot_all = bind_rows(repair_boot_tpl_e2_ip, repair_boot_drb_e2_ip, repair_boot_drb_e1_input,
-                                repair_boot_tpl_e1_input,repair_boot_drb_e1_ip, repair_boot_tpl_e1_ip),
-    pdf_repair_boot = mn_plot_group_boot(repair_boot_all) |> gp("dna_repair_boot", 5, 4)
+                                repair_boot_tpl_e1_input,repair_boot_drb_e1_ip, repair_boot_tpl_e1_ip) |> 
+      filter(group != "OTHER"),
+    pdf_repair_boot = mn_plot_group_boot(repair_boot_all) |> gp("dna_repair_boot", 4, 4.5),
+    
+    venn_e1_ip = mn_venn_groups(da_full_e1_ip, bind_rows(gene_groups, bottom_20_genes_e1_ip)),
+    # pdf("fig/venn_e1_ip.pdf", width = 4.5, height = 3.5);euler(venn_e1_ip, loss_aggregator = "max") |> plot(quantities = TRUE);dev.off()
+    
+    mapping_input_ip = map_ids(prot_e1_input$info, prot_e1_ip$info, method = "all"),
+    venn_e1_input_ip = mn_venn_input_ip(da_full_e1_input, da_full_e1_ip, mapping_input_ip),
+    # pdf("fig/venn_input_ip.pdf", width = 4, height = 3);euler(venn_e1_input_ip[, c(1,2)], loss_aggregator = "max") |> plot(quantities = TRUE);dev.off()
+    venn_e1_input_ip_intersect = venn_e1_input_ip |> filter(Input & IP) |> left_join(da_full_e1_ip, by = c("id.ip" = "id")) |> select(id = id.ip, name = gene_symbols) |> distinct() |> add_column(figure = "IP_Input_significant", group = "sig"),
+    csv_prot_heat_input_ip = make_proteins_for_heatmaps(prot_e1_ip, venn_e1_input_ip_intersect, "input_ip")
   )
   
+    
+
   versions <- tar_plan(
     harmonizr_version = packageVersion("HarmonizR"),
     limma_version = packageVersion("limma")
@@ -228,7 +244,6 @@ targets_main <- function() {
     read_metadata,
     map_experiments,
     selections,
-    input_normalisation,
     for_manuscript,
     versions
   )

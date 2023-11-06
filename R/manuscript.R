@@ -272,16 +272,41 @@ make_proteins_for_heatmaps <- function(set, hprots, suffix) {
   }
 }
 
-all_protein_heatmap_data <- function(set) {
-  pth <- "for_manuscript/proteins_for_heatmaps"
-  if(!dir.exists(pth)) dir.create(pth)
-  fname <- file.path(pth, "all_logfc.csv")
+table_heatmap <- function(set, what = "abu_limma") {
+  meta <- set$metadata |> 
+    filter(!(treatment == "Neg")) |> 
+    droplevels() 
   
-  genes <- set$info$gene_symbols |> unique()
-
-  get_heatmap_data(set, genes, "all data") |> 
-    mutate(across(where(is.numeric), ~signif(.x, digits = 4))) |> 
-    write_csv(fname)
+  dat <- set$dat |> 
+    mutate(val = get(what)) |> 
+    inner_join(meta, by = "sample")
+  
+  make_heat_ <- function(d) {
+    d |> 
+      group_by(id) |> 
+      mutate(M = mean(val, na.rm = TRUE)) |> 
+      mutate(val = (val - M) / log10(2)) |> 
+      ungroup() |> 
+      pivot_wider(id_cols = id, names_from = group, values_from = val)
+  }
+  
+  d_rep <- dat |> 
+    select(-group) |> 
+    unite(group, c(treatment, time_point, replicate), remove = FALSE) |> 
+    arrange(treatment, time_point, replicate) |> 
+    make_heat_()
+    
+  d_mean <- dat |> 
+    group_by(id, group, treatment, time_point) |> 
+    summarise(val = mean(val, na.rm = TRUE)) |> 
+    ungroup() |> 
+    arrange(treatment, time_point) |> 
+    make_heat_()
+  
+  set$info |>
+    select(id, proteins = protein, gene_symbols) |> 
+    left_join(d_rep, by = "id") |> 
+    left_join(d_mean, by = "id")
 }
 
 
@@ -483,7 +508,7 @@ mn_volcano_pathways <- function(da, ctr, terms, pathways) {
 }
 
 # genes is a tibble with gene_symbol and group
-mn_volcano_group <- function(da, ctr, genes, with_names = TRUE) {
+mn_volcano_groups<- function(da, ctr, genes, with_names = TRUE) {
   pgr <- da |> 
     get_ids() |> 
     right_join(select(genes, gene_symbol, group), by = "gene_symbol", relationship = "many-to-many") |> 
@@ -491,7 +516,28 @@ mn_volcano_group <- function(da, ctr, genes, with_names = TRUE) {
     drop_na() |> 
     distinct()
   
-  mn_plot_volcano(da, ctr, pgr, with_names = with_names) + theme(legend.position = "none")
+  d <- da |> 
+    filter(contrast == ctr) |> 
+    mutate(name = str_remove(gene_symbols, ";.*$")) |> 
+    left_join(pgr, by = "id") |> 
+    mutate(sel = !is.na(group))
+
+  d_nsel <- d |> filter(!sel)
+  d_sel <- d |> filter(sel)
+  
+  g <- ggplot(d, aes(x = logFC, y = -log10(PValue), label = name)) +
+    th +
+    geom_point(data = d_nsel, colour = "grey80", size = 0.8) +
+    geom_point(data = d_sel, colour = "black", size = 1.3) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.03))) +
+    geom_vline(xintercept = 0, linewidth = 0.1, alpha = 0.5) +
+    labs(x = expression(log[2]~FC), y = expression(-log[10]~P)) +
+    facet_wrap(~group)
+  
+  if(with_names) {
+    g <- g + geom_text_repel(data = d_sel, size = 2.5, max.overlaps = 100) 
+  }
+  g  
 }
 
 
@@ -685,10 +731,10 @@ mn_plot_group_boot <- function(mdl) {
   m <- mdl |>
     unite(expm, c(experiment, protocol), sep = " ") |> 
     mutate(expm = fct_relevel(expm, c("E1 IP", "E2 IP"))) |> 
-    group_by(expm, treatment) |> 
+    group_by(expm) |> 
     mutate(
       fdr = p.adjust(p_value, method = "BH"),
-      sig = p_value < 0.05
+      sig = fdr < 0.05
     )
   ms <- m |> 
     filter(sig) |> 
@@ -708,8 +754,35 @@ mn_plot_group_boot <- function(mdl) {
     labs(y = expression(mean~log[2]~FC), x = NULL, fill = expression(log[10]~P))
 }
 
+mn_venn_input_ip <- function(da_input, da_ip, id_mapping) {
+  id_map <- id_mapping |> 
+    drop_na() |> 
+    filter(n.x == 1 & n.y == 1) |> 
+    select(-c(n.x, n.y))
+  
+  # significant in any treatment
+  get_sig_ <- function(da) {
+    da |> 
+      mutate(sig = FDR < 0.05) |> 
+      filter(str_detect(contrast, "treatment")) |> 
+      select(id, contrast, sig) |> 
+      pivot_wider(id_cols = id, names_from = contrast, values_from = sig) |> 
+      mutate(sig = treatmentDRB | treatmentTPL) |> 
+      select(id, sig)
+  }
+  
+  ds_ip <- get_sig_(da_ip)
+  ds_input <- get_sig_(da_input)
 
-mn_venn_groups <- function(da, gene_groups, name) {
+  ds_input |> 
+    inner_join(id_map, by = c("id" = "id.x")) |> 
+    left_join(ds_ip, by = c("id.y" = "id")) |> 
+    drop_na() |> 
+    select(Input = sig.x, IP = sig.y, id.input = id, id.ip = id.y)
+}
+
+
+mn_venn_groups <- function(da, gene_groups) {
   ds <- da |> 
     filter(str_detect(contrast, "treatment")) |> 
     mutate(sig = FDR < 0.05) |> 
@@ -734,15 +807,31 @@ mn_venn_groups <- function(da, gene_groups, name) {
   genes_sig <- ds |> 
     filter(sig) |> 
     select(id) |> 
+    distinct() |> 
     add_column(group = "Significant")
   
-  gns <- bind_rows(genes_sig, genes_grp) |> 
+  bind_rows(genes_sig, genes_grp) |> 
     mutate(val = TRUE) |> 
     pivot_wider(id_cols = id, names_from = group, values_from = val, values_fill = FALSE) |> 
     select(-id)
+}
+
+
+groups_for_gsea <- function(gene_grp) {
+  groups <- gene_grp$group |> unique()
+  term2feature <- map(groups, function(grp) {
+    gene_grp |> 
+      filter(group == grp) |> 
+      pull(id)
+  }) |> 
+    set_names(groups)
   
-  pdf("fig/euler_sig_bottom.pdf");plot(euler(gns[, c(1, 2)]), quantities = TRUE);dev.off()
-  pdf("fig/euler_sig_inter.pdf");plot(euler(gns[, c(1, 3)]), quantities = TRUE);dev.off()
-  pdf("fig/euler_sig_short.pdf");plot(euler(gns[, c(1, 4)]), quantities = TRUE);dev.off()
-    
+  term2name <- list(groups = groups)
+  
+  list(
+    group = list(
+      term2feature = term2feature,
+      term2name = term2name
+    )
+  )
 }

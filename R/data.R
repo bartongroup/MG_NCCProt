@@ -120,6 +120,13 @@ export_table <- function(df) {
 }
 
 
+da_table <- function(df) {
+  df |> 
+    mutate(across(where(is.numeric), \(x) {signif(x, 4)}))
+}
+
+
+
 
 remove_batch_effects <- function(set, what = "abu_med", names = "sample",
                       batch_var = "batch", formula = "~ treatment + time_point",

@@ -144,30 +144,44 @@ normalise_to_input <- function(ip, inp, what = "abu_med") {
 }
 
 # Map IDs between two sets. Based on matching gene symbols.
-map_ids <- function(info1, info2) {
+map_ids <- function(info1, info2, method = c("all", "first")) {
   sel_ <- function(info) {
-    info |> 
-      select(id, x = gene_symbols) |> 
-      separate_longer_delim(x, delim = ";")
+    if(method == "all") {
+      info |> 
+        select(id, x = gene_symbols) |> 
+        separate_longer_delim(x, delim = ";")
+    } else {
+      info |> 
+        select(id, x = gene_symbols) |> 
+        mutate(x = str_remove(x, ";.*$"))
+    }
   }
   
   ig1 <- sel_(info1)
   ig2 <- sel_(info2)
   
   # id mapping
-  left_join(ig1, ig2, by = "x", relationship = "many-to-many") |> 
+  full_join(ig1, ig2, by = "x", relationship = "many-to-many") |> 
     select(-x) |> 
     distinct() |> 
     group_by(id.x, .drop = FALSE) |> 
-    mutate(n = length(na.omit(id.y))) |>
-    ungroup()
+    mutate(n.x = length(na.omit(id.y))) |>
+    ungroup() |> 
+    group_by(id.y, .drop = FALSE) |> 
+    mutate(n.y = length(na.omit(id.x))) |>
+    ungroup() |> 
+    mutate(
+      n.x = if_else(is.na(id.x), 0, n.x),
+      n.y = if_else(is.na(id.y), 0, n.y)
+    )
 }
+
 
 merge_sets <- function(set1, set2) {
   mp <- map_ids(set1$info, set2$info)
   
   dat2 <- set2$dat |> 
-    right_join(mp |> filter(n == 1), by = c("id" = "id.y"), relationship = "many-to-many") |> 
+    right_join(mp |> filter(n.x == 1 & n.y == 1), by = c("id" = "id.y"), relationship = "many-to-many") |> 
     select(-c(id, n)) |> 
     rename(id = id.x) |> 
     relocate(id, .before = 1) |> 
@@ -210,7 +224,7 @@ select_bottom_perc <- function(set, perc = 0.2) {
     mutate(p = percent_rank(ibaq)) |> 
     filter(p <= perc) |> 
     separate_longer_delim(gene_symbols, delim = ";") |> 
-    select(id) |> 
+    select(id, gene_symbols) |> 
     distinct() |> 
     add_column(
       group = "Bottom 20%",
