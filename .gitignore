@@ -12,5 +12,7 @@ cache/
 tab/
 fig/
 shiny/data/
-for_manuscript/proteins_for_heatmaps_*
+for_manuscript/proteins_for_heatmaps*
+for_manuscript/tables/
+for_manuscript/final_version/
 ~$*
