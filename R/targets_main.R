@@ -25,10 +25,10 @@ targets_main <- function() {
       # overview figures
       fig_detection = plot_detection(prot),
       fig_sample_detection = plot_sample_detection(prot),
-      fig_sample_distribution = plot_sample_ridges(prot, what = "abu_batch"),
-      fig_clustering = plot_clustering(prot, colour_var = "treatment", what = "abu_batch"),
-      fig_matrix = plot_distance_matrix(prot, min_cor = 0.6, what = "abu_batch"),
-      fig_pca = plot_pca(prot, shape_var = "batch", what = "abu_batch") + geom_text_repel(aes(label = time_point)),
+      fig_sample_distribution = plot_sample_ridges(prot, what = "abu_limma"),
+      fig_clustering = plot_clustering(prot, colour_var = "treatment", what = "abu_limma"),
+      fig_matrix = plot_distance_matrix(prot, min_cor = 0.6, what = "abu_limma"),
+      fig_pca = plot_pca(prot, shape_var = "batch", what = "abu_limma") + geom_text_repel(aes(label = time_point)),
       
       fig_clustering_med = plot_clustering(prot_all, colour_var = "batch", what = "abu_med"),
       fig_matrix_med = plot_distance_matrix(prot_all, min_cor = 0.6, what = "abu_med"),

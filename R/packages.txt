@@ -9,6 +9,7 @@ ggridges
 ggbeeswarm
 ggdendro
 ggrepel
+ggtext
 dendsort
 HarmonizR
 UpSetR

@@ -92,6 +92,9 @@ plot_sample_ridges <- function(st, what = "abu_med", name_var = "sample", fill_v
 
 plot_clustering <- function(set, text_size = 10, what = "abu_med", dist.method = "euclidean",
                             clust.method = "complete", colour_var = "treatment") {
+  env <- new.env(parent = globalenv())
+  env$text_size <- text_size
+  
   tab <- dat2mat(set$dat, what)
   
   dendr <- t(tab) |> 
@@ -100,32 +103,37 @@ plot_clustering <- function(set, text_size = 10, what = "abu_med", dist.method =
     dendsort::dendsort() |> 
     ggdendro::dendro_data()
   
-  seg <- ggdendro::segment(dendr)
+  env$seg <- ggdendro::segment(dendr)
+  
   meta <- set$metadata |>
     mutate(
       colvar = get(colour_var),
       sample = as.character(sample)
     )
-  labs <- left_join(dendr$labels |> mutate(label = as.character(label)), meta, by = c("label" = "sample")) |> 
-    mutate(colour = okabe_ito_palette[as_factor(colvar)])
-  theme.d <- ggplot2::theme(
-    panel.grid.major = ggplot2::element_blank(),
-    panel.grid.minor = ggplot2::element_blank(),
+  
+  env$labs <- left_join(dendr$labels |> mutate(label = as.character(label)), meta, by = c("label" = "sample")) |> 
+    mutate(colour = okabe_ito_palette[as_factor(colvar)]) |> 
+    mutate(label = str_glue("<i style='color:{colour}'>{label}</i>"))
+  
+  env$theme.d <- ggplot2::theme(
+    panel.grid = ggplot2::element_blank(),
     panel.background = ggplot2::element_blank(),
-    axis.text.y = ggplot2::element_text(size = text_size, colour = labs$colour),
+    axis.text.y = ggtext::element_markdown(),
     axis.line.y = ggplot2::element_blank(),
     axis.line.x = ggplot2::element_line(linewidth = 0.5),
     axis.ticks.y = ggplot2::element_blank()
   )
-  rm(set, tab, dendr)
-  ggplot() +
-    theme.d +
-    coord_flip() +
-    geom_segment(data = seg, aes(x = x, y = y, xend = xend, yend = yend)) +
-    scale_x_continuous(breaks = seq_along(labs$label), labels = labs$label) +
-    scale_y_continuous(expand = c(0,0), limits = c(0, max(seg$y) * 1.03)) +
-    scale_colour_manual(values = okabe_ito_palette) +
-    labs(x = NULL, y = "Distance")
+  
+  with(env, {
+    ggplot() +
+      theme.d +
+      coord_flip() +
+      geom_segment(data = seg, aes(x = x, y = y, xend = xend, yend = yend)) +
+      scale_x_continuous(breaks = seq_along(labs$label), labels = labs$label) +
+      scale_y_continuous(expand = c(0, 0), limits = c(0, max(seg$y) * 1.03)) +
+      scale_colour_manual(values = okabe_ito_palette) +
+      labs(x = NULL, y = "Distance")  
+  })
 }
 
 
