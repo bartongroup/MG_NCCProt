@@ -23,6 +23,3 @@ biomart_fetch_genes <- function(mart) {
     dplyr::mutate(description = str_remove(description, "\\s\\[.*\\]")) |>
     tibble::as_tibble()
 }
-
-
-

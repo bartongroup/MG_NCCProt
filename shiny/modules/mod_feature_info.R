@@ -42,7 +42,8 @@ mod_feature_info_server <- function(id, state) {
         df <- de |>
           dplyr::filter(id %in% ids & base == bse & contrast == ctr) |> 
           dplyr::left_join(DATA[[state$experiment]]$features, by = "id") |> 
-          dplyr::arrange(name)
+          dplyr::arrange(name) |> 
+          dplyr::mutate(name = str_replace_all(name, ";", "; "))
       } else {
         df <- tibble::tibble(Error = str_glue("Only {CONFIG$max_points} points can be selected."))
       }

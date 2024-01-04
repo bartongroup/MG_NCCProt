@@ -143,6 +143,23 @@ normalise_to_input <- function(ip, inp, what = "abu_med") {
   ip
 }
 
+
+normalise_to_proteins <- function(set, pids) {
+  normfac <- set$dat |>
+    filter(id %in% pids) |> 
+    mutate(abu = log10(intensity)) |>
+    group_by(id) |>
+    mutate(abu_m = abu - median(abu)) |>
+    ungroup() |> 
+    group_by(sample) |> 
+    summarise(m = median(abu_m))
+  set$dat <- set$dat |> 
+    left_join(normfac, by = "sample") |> 
+    mutate(abu_prot = log10(intensity) - m) |> 
+    select(-m)
+  set
+}
+
 # Map IDs between two sets. Based on matching gene symbols.
 map_ids <- function(info1, info2, method = c("all", "first")) {
   sel_ <- function(info) {

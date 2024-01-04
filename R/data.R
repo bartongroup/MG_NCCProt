@@ -181,3 +181,17 @@ get_ids <- function(da) {
     separate_longer_delim(gene_symbol, delim = ";") |> 
     distinct()
 }
+
+
+select_ribosomal_proteins <- function(set, limit = 5) {
+  ids <- set$info |> 
+    filter(str_detect(protein_names, "ribosomal protein")) |> 
+    pull(id)
+  
+  set$dat |> 
+    filter(id %in% ids) |> 
+    group_by(id) |> 
+    summarise(m = mean(log10(intensity))) |> 
+    filter(m > limit) |> 
+    pull(id)
+}

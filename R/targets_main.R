@@ -20,7 +20,11 @@ targets_main <- function() {
       # read data file
       prot_all = read_mq(file, PROTEINS_DATA_COLUMNS, metadata, uni_gene, sel_meta = selection, filt_data = PROTEINS_FILTER,
                      measure_col_pattern = MEASURE_COL_PATTERN),
-      prot = remove_batch_effects(prot_all, formula = "~ treatment + time_point"),
+      ribo_ids = select_ribosomal_proteins(prot_all, limit = 5),
+      
+      prot = prot_all |> 
+        normalise_to_proteins(ribo_ids) |> 
+        remove_batch_effects(formula = "~ treatment + time_point"),
       
       # overview figures
       fig_detection = plot_detection(prot),
