@@ -407,5 +407,30 @@ plot_lograt_protein <- function(df, pids, ncol = NULL, what = "logFC", colour_va
 }
 
 
+plot_protein_heatmap <- function(set, pids, treats, what = "abu_limma", max_name_len = 18, text_size = 10) {
+  
+  d <- set$dat |> 
+    filter(id %in% pids) |> 
+    left_join(set$info, by = "id") |> 
+    left_join(set$metadata, by = "sample") |> 
+    filter(group != "Neg" & treatment %in% treats) |> 
+    mutate(val = get(what)) |> 
+    select(id, name = gene_symbols, val, sample, group) |> 
+    dplyr::group_by(id) |> 
+    dplyr::mutate(M = mean(val, na.rm = TRUE)) |> 
+    dplyr::mutate(val = (val - M) / log10(2)) |> 
+    dplyr::ungroup() |> 
+    dplyr::group_by(id, name, group) |> 
+    dplyr::summarise(val = mean(val, na.rm = TRUE)) |> 
+    dplyr::mutate(sample = group) |> 
+    mutate(name = if_else(nchar(name) < max_name_len,
+                          name,
+                          str_c(str_sub(name, end = max_name_len), "...")
+    ))
+                          
+  
+  tab <- dat2mat(d, what = "val", names = "sample", ids = "name")
+  ggheatmap(tab, with.y.text = TRUE, order.col = FALSE, legend.name = expression(log[2]~FC))
+}
 
 

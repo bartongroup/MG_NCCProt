@@ -835,3 +835,48 @@ groups_for_gsea <- function(gene_grp) {
     )
   )
 }
+
+
+scientific_10 <- function(x) {
+  parse(
+    text = scales::scientific_format()(x) |>
+      str_replace("e\\+*", " %*% 10^") |>
+      str_replace("^1 \\%\\*\\% 10\\^", "10^")
+  )
+}
+
+
+plot_fig_1d <- function(data_file) {
+  pl_ <- function(sheet) {
+    d <- read_excel(data_file, sheet = sheet) |> 
+      pivot_longer(everything()) |> 
+      drop_na() |> 
+      mutate(name = fct_relevel(name, c("no EdU", "DMSO")))
+    md <- d |>
+      group_by(name) |> 
+      summarise(m = median(value)) |> 
+      mutate(xi = as.integer(name))
+    dd <- 0.4
+    
+    tst <- wilcox.test(value ~ name, data = d |> filter(name != "no EdU"))
+    print(tst$p.value)
+    
+    pl <- d |> 
+      ggplot(aes(x = name, y = value)) +
+      theme_classic() +
+      theme(
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)
+      ) +
+      geom_quasirandom(size = 0.05) +
+      scale_y_log10(labels = scientific_10, expand = c(0, 0), limits = c(10, 1e5)) +
+      labs(x = NULL, y = "EdU mean intensity in EdU + cells (a.u.)") +
+      geom_segment(data = md, aes(x = xi - dd, xend = xi + dd, y = m, yend = m),
+                   colour = "red", alpha = 0.5, linewidth = 1.3)
+    gp(pl, sheet, 1.8, 3.2)
+  }
+  
+  pl_("Fig1D_TPL")
+  pl_("Fig1D_DRB")
+  
+  
+}

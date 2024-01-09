@@ -103,6 +103,7 @@ targets_main <- function() {
         tar_plan(
           da_samples = prot$metadata |> filter(treatment %in% c("Neg", "DMSO", treat)) |> pull(sample),
           da_pids_full = da_full |> filter(contrast == ctr & sig) |> pull(id),
+          da_pids_full_005 = da_full |> filter(contrast == ctr & FDR < 0.05) |> pull(id),
           da_genes_full = id2gene(da_pids_full, prot$id_prot_gene),
           fig_prots_da_full = plot_protein(prot, what = "abu_limma", pids = da_pids_full, sample_sel = da_samples, ncol = 4),
           
@@ -233,7 +234,12 @@ targets_main <- function() {
     venn_e1_input_ip = mn_venn_input_ip(da_full_e1_input, da_full_e1_ip, mapping_input_ip),
     # pdf("fig/venn_input_ip.pdf", width = 4, height = 3);euler(venn_e1_input_ip[, c(1,2)], loss_aggregator = "max") |> plot(quantities = TRUE);dev.off()
     venn_e1_input_ip_intersect = venn_e1_input_ip |> filter(Input & IP) |> left_join(da_full_e1_ip, by = c("id.ip" = "id")) |> select(id = id.ip, name = gene_symbols) |> distinct() |> add_column(figure = "IP_Input_significant", group = "sig"),
-    csv_prot_heat_input_ip = make_proteins_for_heatmaps(prot_e1_ip, venn_e1_input_ip_intersect, "input_ip")
+    csv_prot_heat_input_ip = make_proteins_for_heatmaps(prot_e1_ip, venn_e1_input_ip_intersect, "input_ip"),
+    
+    pdf_fig_1d = plot_fig_1d("for_manuscript/ScatterPlot_EdU.xlsx"),
+    
+    pdf_heat_e1_ip_drb = plot_protein_heatmap(prot_e1_ip, da_pids_full_005_drb_e1_ip, c("DMSO", "DRB")) |> gp("heat_e1_ip_drb", 4, 8),
+    pdf_heat_e1_ip_tpl = plot_protein_heatmap(prot_e1_ip, da_pids_full_005_tpl_e1_ip, c("DMSO", "TPL")) |> gp("heat_e1_ip_tpl", 4, 20)
   )
   
     

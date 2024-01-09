@@ -11,10 +11,10 @@
 #'
 #' @return A matrix with protein IDs as row names, sample names as column names,
 #'   and the specified values in the cells
-dat2mat <- function(dat, what = "abu_norm", names = "sample") {
+dat2mat <- function(dat, what = "abu_norm", names = "sample", ids = "id") {
   dat |> 
-    pivot_wider(id_cols = id, names_from = !!names, values_from = !!what) |> 
-    column_to_rownames("id") |> 
+    pivot_wider(id_cols = !!ids, names_from = !!names, values_from = !!what) |> 
+    column_to_rownames(ids) |> 
     as.matrix()
 }
 
