@@ -103,7 +103,7 @@ targets_main <- function() {
         tar_plan(
           da_samples = prot$metadata |> filter(treatment %in% c("Neg", "DMSO", treat)) |> pull(sample),
           da_pids_full = da_full |> filter(contrast == ctr & sig) |> pull(id),
-          da_pids_full_005 = da_full |> filter(contrast == ctr & FDR < 0.05) |> pull(id),
+          da_pids_full_005 = da_full |> filter(contrast == ctr & FDR < 0.05 & abs(logFC) > 0.5) |> pull(id),
           da_genes_full = id2gene(da_pids_full, prot$id_prot_gene),
           fig_prots_da_full = plot_protein(prot, what = "abu_limma", pids = da_pids_full, sample_sel = da_samples, ncol = 4),
           
