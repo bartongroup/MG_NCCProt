@@ -1,6 +1,6 @@
 # Nascent Chromatin Capture Proteomics
 
-Maintainer: Marek Gierlinski
+Maintainer: Marek Gierlinski (M.Gierlinski@dundee.ac.uk)
 
 Software to accompany manuscript Bandau et al. (2024) "RNA polymerase II has distinct roles in configuring nascent and steady state chromatin".
 
