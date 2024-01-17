@@ -744,7 +744,7 @@ mn_plot_group_boot <- function(mdl) {
     ggplot(aes(x = group, y = mean_logFC)) +
     th +
     theme(legend.position = "right") +
-    geom_col(aes(fill = log10(p_value))) +
+    geom_col(aes(fill = log10(fdr))) +
     geom_hline(yintercept = 0, colour = "grey50") +
     geom_point(data = ms, aes(y = ast), shape = 8, size = 0.8) +
     scale_fill_viridis_c(option = "cividis") +
