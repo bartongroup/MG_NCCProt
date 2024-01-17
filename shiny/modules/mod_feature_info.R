@@ -24,6 +24,7 @@ mod_feature_info_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
+    card_header("Feature information"),
     DT::dataTableOutput(
       outputId = ns("feature_info")
     )

@@ -11,7 +11,8 @@ lib_dir <- readLines("../libdir.txt")
 if (dir.exists(lib_dir)) .libPaths(lib_dir)
 
 library(shiny)
-library(shinydashboard) 
+library(bslib)
+library(bsicons)
 library(jsonlite)
 
 # datatable needs this option to display Inf correctly

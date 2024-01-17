@@ -30,45 +30,49 @@ mod_feature_plot_ui <- function(id) {
   choices <- unlist(CONFIG$data_columns)
   col_choice <- rlang::set_names(names(choices), choices)
   
+  group_mean <- checkboxInput(
+    inputId = ns("group_mean"),
+    label = "Heatmap averaged across replicates"
+  )
+  
+  norm_fc <- checkboxInput(
+    inputId = ns("norm_fc"),
+    label = "Heatmap normalised per row"
+  )
+  
+  intensity_value <- selectInput(
+    inputId = ns("intensity_value"),
+    label = "Intensity value",
+    choices = col_choice,
+    selected = CONFIG$default_data_column
+  )
+  
+  intensity_scale <- radioButtons(
+    inputId = ns("intensity_scale"),
+    label = "Intesity scale",
+    choices = c("Linear" = "lin", "Logarithmic" = "log"),
+    inline = TRUE
+  )
+  
+  gear <- popover(
+    bs_icon("gear"),
+    group_mean,
+    norm_fc,
+    conditionalPanel(
+      condition = 'input.norm_fc == 0',
+      ns = ns,
+      intensity_value,
+      intensity_scale
+    )
+  )
+  
   tagList(
-    dropdownButton(
-      
-      checkboxInput(
-        inputId = ns("group_mean"),
-        label = "Heatmap averaged across replicates"
-      ),
-      
-      checkboxInput(
-        inputId = ns("norm_fc"),
-        label = "Heatmap normalised per row"
-      ),
-      
-      conditionalPanel(
-        condition = 'input.norm_fc == 0',
-        ns = ns,
-        
-        selectInput(
-          inputId = ns("intensity_value"),
-          label = "Intensity value",
-          choices = col_choice,
-          selected = CONFIG$default_data_column
-        ),
-        
-        radioButtons(
-          inputId = ns("intensity_scale"),
-          label = "Intesity scale",
-          choices = c("Linear" = "lin", "Logarithmic" = "log"),
-          inline = TRUE
-        )
-      ),
-      
-      circle = FALSE,
-      status = "primary",
-      icon = icon("gear"),
-      size = "xs",
-      tooltip = tooltipOptions(title = "Plot configuration")
+    card_header(
+      "Feature plot",
+      gear,
+      class = "d-flex justify-content-between"
     ),
-    
+
     plotOutput(
       outputId = ns("feature_plot"),
       width = "100%",

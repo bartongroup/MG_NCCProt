@@ -26,27 +26,31 @@ require(fenr)
 mod_enrichment_ui <- function(id) {
   ns <- NS(id)
   
+  ontology <- radioGroupButtons(
+    inputId = ns("ontology"),
+    label = "Ontology",
+    choices = CONFIG$ontologies
+  )
+  
+  fdr_limit <- numericInput(
+    inputId = ns("fdr_limit"),
+    label = "FDR limit",
+    value = 0.05,
+    min = 0,
+    max = 1
+  )
+  
+  gear <- popover(
+    bs_icon("gear"),
+    ontology,
+    fdr_limit
+  )
+
   tagList(
-    dropdownButton(
-      
-      radioGroupButtons(
-        inputId = ns("ontology"),
-        label = "Ontology",
-        choices = CONFIG$ontologies
-      ),
-      
-      numericInput(
-        inputId = ns("fdr_limit"),
-        label = "FDR limit",
-        value = 0.05,
-        min = 0,
-        max = 1
-      ),
-      circle = FALSE,
-      status = "primary",
-      icon = icon("gear"),
-      size = "xs",
-      tooltip = tooltipOptions(title = "Table configuration")
+    card_header(
+      "Functional enrichment",
+      gear,
+      class = "d-flex justify-content-between"
     ),
     
     DT::dataTableOutput(

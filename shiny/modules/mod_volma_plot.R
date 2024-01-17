@@ -19,36 +19,45 @@ require(ggplot2)
 
 # ----- UI definitions -----
 
+volma_gear <- 
+
 mod_volma_plot_ui <- function(id) {
   ns <- NS(id)
   
+  plot_type <- radioGroupButtons(
+    inputId = ns("plot_type"),
+    label = "Main plot type",
+    choices = c("Volcano", "MA")
+  )
+  
+  fc_limit <- numericInput(
+    inputId = ns("logfc_limit"),
+    label = "|log FC| significance limit",
+    value = 0,
+    min = 0,
+    max = 100
+  )
+  
+  fdr_limit <- numericInput(
+    inputId = ns("fdr_limit"),
+    label = "FDR significance limit",
+    value = 0.01,
+    min = 0,
+    max = 1
+  )
+  
+  gear <- popover(
+    bs_icon("gear"),
+    plot_type,
+    fc_limit,
+    fdr_limit
+  )
+  
   tagList(
-    dropdownButton(
-      
-      radioGroupButtons(
-        inputId = ns("plot_type"),
-        label = "Main plot type",
-        choices = c("Volcano", "MA")
-      ),
-      numericInput(
-        inputId = ns("logfc_limit"),
-        label = "|log FC| significance limit",
-        value = 0,
-        min = 0,
-        max = 100
-      ),
-      numericInput(
-        inputId = ns("fdr_limit"),
-        label = "FDR significance limit",
-        value = 0.01,
-        min = 0,
-        max = 1
-      ),
-      circle = FALSE,
-      status = "primary",
-      icon = icon("gear"),
-      size = "xs",
-      tooltip = tooltipOptions(title = "Plot type")
+    card_header(
+      "Volcano/MA plot",
+      gear,
+      class = "d-flex justify-content-between"
     ),
     
     plotOutput(
@@ -58,7 +67,6 @@ mod_volma_plot_ui <- function(id) {
       hover = ns("plot_hover")
     )
   )
-  
 }
 
 # ----- Server logic -----
