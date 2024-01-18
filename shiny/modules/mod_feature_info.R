@@ -23,7 +23,7 @@ require(tibble)
 mod_feature_info_ui <- function(id) {
   ns <- NS(id)
   
-  tagList(
+  card(
     card_header("Feature information"),
     DT::dataTableOutput(
       outputId = ns("feature_info")
@@ -82,7 +82,7 @@ mod_feature_info_server <- function(id, state) {
       }
       DT::datatable(
         ge,
-        options = list(paging = FALSE),
+        options = list(paging = FALSE, dom = "t"),
         style = "bootstrap",
         selection = "single",
         rownames = FALSE

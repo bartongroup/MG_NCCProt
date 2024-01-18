@@ -46,7 +46,7 @@ mod_enrichment_ui <- function(id) {
     fdr_limit
   )
 
-  tagList(
+  card(
     card_header(
       "Functional enrichment",
       gear,
@@ -95,7 +95,7 @@ mod_enrichment_server <- function(id, state) {
       fe <- enrichment_table()
       DT::datatable(
         fe,
-        options = list(paging = FALSE),
+        options = list(paging = FALSE, dom = "t"),
         style = "bootstrap",
         selection = "single",
         rownames = FALSE

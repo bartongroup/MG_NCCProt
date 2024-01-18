@@ -32,12 +32,14 @@ mod_feature_plot_ui <- function(id) {
   
   group_mean <- checkboxInput(
     inputId = ns("group_mean"),
-    label = "Heatmap averaged across replicates"
+    label = "Heatmap averaged across replicates",
+    value = TRUE
   )
   
   norm_fc <- checkboxInput(
     inputId = ns("norm_fc"),
-    label = "Heatmap normalised per row"
+    label = "Heatmap normalised per row",
+    value = TRUE
   )
   
   intensity_value <- selectInput(
@@ -66,7 +68,7 @@ mod_feature_plot_ui <- function(id) {
     )
   )
   
-  tagList(
+  card(
     card_header(
       "Feature plot",
       gear,

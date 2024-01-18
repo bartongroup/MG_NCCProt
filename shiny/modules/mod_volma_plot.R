@@ -13,13 +13,10 @@
 #    DATA$de - a tibble with differential expression results
 #
 
-require(shinyWidgets)
 require(dplyr)
 require(ggplot2)
 
 # ----- UI definitions -----
-
-volma_gear <- 
 
 mod_volma_plot_ui <- function(id) {
   ns <- NS(id)
@@ -53,18 +50,21 @@ mod_volma_plot_ui <- function(id) {
     fdr_limit
   )
   
-  tagList(
+  card(
     card_header(
       "Volcano/MA plot",
       gear,
       class = "d-flex justify-content-between"
     ),
     
-    plotOutput(
-      outputId = ns("main_plot"),
-      width = "100%",
-      brush = ns("plot_brush"),
-      hover = ns("plot_hover")
+    card_body(
+      min_height = 250,
+      plotOutput(
+        outputId = ns("main_plot"),
+        width = "100%",
+        brush = ns("plot_brush"),
+        hover = ns("plot_hover")
+      )
     )
   )
 }
@@ -139,19 +139,20 @@ get_volma_data <- function(de, bse, ctr, plot_type) {
 #' @param point_size Standard point size
 #' @param sig_size Significant point size
 #' @param sel_size Selected point size
+#' @param text_size Text size
 #' @param point_colour Standard point colour
 #' @param sig_colour Significant point colour
 #' @param sel_fill Selected point fill
 #' @param sel_colour Selected point outline colour
 #'
 #' @return A ggplot object
-sh_plot_xy <- function(d, point_size = 0.2, sig_size = 0.4, sel_size = 3,
+sh_plot_xy <- function(d, point_size = 0.2, sig_size = 0.4, sel_size = 3, text_size = 13,
                        point_colour = "grey70", sig_colour = "black", sel_fill = "blue", sel_colour = "yellow") {
   g <- ggplot(mapping = aes(x, y)) +
     theme_bw() +
     theme(
       panel.grid = element_blank(),
-      text = element_text(size = 18)
+      text = element_text(size = text_size)
     )
   # No selection, show significant genes
   if(sum(d$sel) == 0) {
