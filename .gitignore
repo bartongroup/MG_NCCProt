@@ -4,7 +4,6 @@
 .RData
 .Ruserdata
 _targets/
-mq_data/
 doc/*
 !doc/*qmd
 !doc/images
