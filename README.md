@@ -4,7 +4,7 @@ Maintainer: Marek Gierlinski (M.Gierlinski@dundee.ac.uk)
 
 Collaborators: Susanne Bandau, Constance Alabert
 
-Software to accompany manuscript Bandau et al. (2024) "RNA polymerase II has distinct roles in configuring nascent and steady state chromatin".
+Software to accompany manuscript Bandau et al. (2024) "RNA polymerase II has distinct roles in configuring nascent and steady state chromatin" [https://www.embopress.org/doi/full/10.1038/s44319-024-00085-x](https://www.embopress.org/doi/full/10.1038/s44319-024-00085-x).
 
 ## Usage
 
