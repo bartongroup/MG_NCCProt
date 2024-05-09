@@ -81,7 +81,10 @@ mn_plot_feature_heatmap <- function(set, genes, what = "abu_limma", group_mean =
     labs(x = NULL, y = NULL, fill = expression(log[2]~FC)) +
     scale_fill_distiller(type = "div", palette = "RdBu", limits = c(-max_z, max_z), expand = c(0, 0))
   
-  cowplot::plot_grid(g1, g2, ncol = 1, rel_heights = c(1, 10), align = "v", axis = "lr")
+  #cowplot::plot_grid(g1, g2, ncol = 1, rel_heights = c(1, 10), align = "v", axis = "lr")
+  g1 / g2 +
+    plot_layout(heights = c(1, 10))
+    
 }
 
 mn_plot_volcano <- function(da, ctr, pgr = NULL, fdr_limit = 0.01, logfc_limit = 0, with_names = TRUE, palette = okabe_ito_palette) {

@@ -41,7 +41,6 @@ targets_main <- function() {
       fig_pca_limma = plot_pca(prot, shape_var = "batch", what = "abu_limma")  + geom_text_repel(aes(label = time_point)),
       fig_pca_combat = plot_pca(prot, shape_var = "batch", what = "abu_combat")  + geom_text_repel(aes(label = time_point)),
       
-      
       # differential abundance
       da_full = limma_de_f(prot, "~ treatment + time_point", what = "abu_limma", filt = "treatment != 'Neg'",
                            logfc_limit = LOGFC_LIMIT, fdr_limit = FDR_LIMIT, base = "Full model"),
@@ -80,7 +79,7 @@ targets_main <- function() {
       
       # Shiny
       all_ids = prot$info$id,
-      iterms = index_functional_terms(terms, bm_genes, prot$id_prot_gene),
+      iterms = index_functional_terms(terms, prot$id_prot_gene),
       fterms = prepare_terms_fenr(iterms, all_ids),
       da_shiny = bind_rows(da_full, da_contrasts, dl),
       sav_shiny = save_data_for_shiny(name, prot, da_shiny, fterms),

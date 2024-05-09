@@ -38,7 +38,8 @@ plot_detection <- function(set) {
   g1 <- plotcurve(dp) + labs(x = "Proteins", y = "Detected in that many samples")
   g2 <- plotcurve(ds) + labs(x = "Samples", y = "Contains that many proteins")
   
-  cowplot::plot_grid(g1, g2, align = "h", labels = c("A", "B"))
+  #cowplot::plot_grid(g1, g2, align = "h", labels = c("A", "B"))
+  g1 + g2 + plot_annotation(tag_levels = "A")
 }
 
 plot_sample_detection <- function(set) {

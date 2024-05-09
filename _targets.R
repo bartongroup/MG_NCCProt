@@ -32,7 +32,7 @@ sesinfo <- list(
 
 # Targets
 c(
-  sesinfo,
+  #sesinfo,
   targets_main()
 )
 

@@ -139,11 +139,8 @@ download_functional_terms <- function(species) {
 }
 
 # based on protein id, still requires ensembl gene_id -> gene symbol conversion for Reactome
-index_functional_terms <- function(terms, ens2sym, sym2id) {
+index_functional_terms <- function(terms, sym2id) {
   
-  ens2sym <- ens2sym |> 
-    select(gene_id, gene_symbol) |> 
-    distinct()
   sym2id <- sym2id |> 
     select(id, gene_symbol) |> 
     distinct()
@@ -161,7 +158,6 @@ index_functional_terms <- function(terms, ens2sym, sym2id) {
     add_protein_id()
   
   terms$re$mapping <- terms$re$mapping |> 
-    inner_join(ens2sym, by = "gene_id") |> 
     add_protein_id()
   
   terms$kg$mapping <- terms$kg$mapping |> 
