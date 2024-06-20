@@ -1,0 +1,233 @@
+# Convert raw output from limma into a useful format
+tabulate_de <- function(fit) {
+  coefs <- colnames(fit$coefficients) |> 
+    str_subset("Intercept", negate = TRUE)
+  map_dfr(coefs, function(ctr) {
+    limma::topTable(fit, coef = ctr, number = 1e6, sort.by = "none") |>
+      as_tibble(rownames = "id") |>
+      add_column(contrast = ctr)
+  }) |> 
+    drop_na() |> 
+    select(-c(t, B)) |>
+    rename(FDR = adj.P.Val, PValue = P.Value) |>
+    mutate(
+      id = as.character(id),
+      logFC = logFC / log10(2),    # convert into log2
+      contrast = factor(contrast, levels = coefs)
+    )
+}
+
+# DE for selected contrasts; if not specified, all pairs of contrasts 
+limma_de <- function(set, contrasts = NULL, group_var = "group", what = "abu_med",
+                     filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05, base = "-") {
+  metadata <- set$metadata |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |> 
+    mutate(group = get(group_var)) |> 
+    filter(!is.na(group)) |> 
+    droplevels()
+  groups <- unique(as.character(metadata$group)) 
+  
+  if (is.null(contrasts)) {
+    contrasts <- expand_grid(x = as_factor(groups), y = as_factor(groups)) |>
+      filter(as.integer(x) < as.integer(y)) |>
+      unite(contrast, c(y, x), sep = "-") |>
+      pull(contrast)
+  }
+  
+  map(contrasts, function(ctr) {
+    grps <- str_split_1(ctr, "-")
+    meta <- metadata |> 
+      filter(group %in% grps) |> 
+      droplevels()
+    design_mat <- model.matrix(~ group, data = meta)
+    tab <- dat2mat(set$dat, what, names)[, as.character(meta[[names]])]
+    
+    tab |>
+      limma::lmFit(design_mat) |>
+      limma::eBayes() |> 
+      tabulate_de() |> 
+      mutate(contrast = ctr)
+  }) |> 
+    list_rbind() |> 
+    add_genes(set$info) |> 
+    mutate(
+      sig = FDR < fdr_limit & abs(logFC) >= logfc_limit,
+      log10Pvalue = -log10(PValue)
+    ) |> 
+    add_column(base = base)
+}
+
+
+
+# DE with formula
+limma_de_f <- function(set, formula, what = "abu_med", filt = "TRUE", names = "sample",
+                       logfc_limit = 1, fdr_limit = 0.05, base = "-") {
+  meta <- set$metadata |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |> 
+    droplevels()
+  
+  tab <- dat2mat(set$dat, what, names)[, as.character(meta[[names]])]
+  design_mat <- model.matrix(as.formula(formula), data = meta)
+
+  fit <- tab |>
+    limma::lmFit(design_mat) |>
+    limma::eBayes()
+  
+  tabulate_de(fit) |> 
+    add_genes(set$info) |> 
+    mutate(
+      sig = FDR < fdr_limit & abs(logFC) >= logfc_limit,
+      log10Pvalue = -log10(PValue)
+    ) |> 
+    add_column(base = base)
+}
+
+
+# Comment from Gordon Smyth on block design: The purpose of random blocking via
+# duplicateCorrelation etc is to recover inter-block information when the number
+# of blocks is large and the treatments are unbalanced with respect to the
+# blocks. Your experiment is completely balanced with only three blocks so there
+# is no inter-block information to recover and no advantage for random effects.
+
+# Limma with block design by subject/donor/patient...
+limma_de_block <- function(set, formula, block_var, what = "abu_med",
+                           filt = "TRUE", names = "sample", logfc_limit = 1, fdr_limit = 0.05, base = "-") {
+  meta <- set$metadata |>
+    filter(!bad & !!rlang::parse_expr(filt)) |>
+    droplevels()
+  
+  tab <- dat2mat(set$dat, what, names)[, as.character(meta[[names]])]
+  design_mat <- model.matrix(as.formula(formula), data = meta)
+  block <- meta[[block_var]]
+  
+  # Inter subject correlation
+  corfit <- limma::duplicateCorrelation(tab, design_mat, block = block)
+  
+  # Fit with block and correlation
+  fit <- tab |>
+    limma::lmFit(design_mat, block = block, correlation = corfit$consensus.correlation) |>
+    limma::eBayes()
+  
+  tabulate_de(fit) |>
+    add_genes(set$info) |> 
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    add_column(base = base)
+}
+
+
+
+
+# one-sample limma against zero
+limma_de_ratio <- function(df, what = "logFC", id_var = "sample", filt = "TRUE",
+                           logfc_limit = 0, fdr_limit = 0.05, base = "-") {
+  metadata <- df$metadata |> 
+    filter(!bad & !!rlang::parse_expr(filt)) |> 
+    droplevels()
+  
+  groups <- metadata$group |> 
+    as.character() |> 
+    unique()
+  
+  all_tab <- dat2mat(df$dat, what = what, names = id_var)
+  
+  map(groups, function(grp) {
+    meta <- metadata |> 
+      filter(group == grp)
+    tab <- all_tab[, as.character(meta[[id_var]])]
+    design_mat <- cbind(Intercept = rep(1, ncol(tab)))
+    
+    fit <- tab |>
+      limma::lmFit(design_mat) |>
+      limma::eBayes()
+    
+    limma::topTable(fit, number = 1e6, sort.by = "none") |>
+      as_tibble(rownames = "id") |>
+      mutate(
+        id = as.character(id),
+        logFC = logFC / log10(2)
+      ) |> 
+      rename(FDR = adj.P.Val, PValue = P.Value) |>
+      select(-c(t, B)) |> 
+      add_column(contrast = grp) |> 
+      drop_na() 
+  }) |> 
+    list_rbind() |> 
+    add_genes(df$info) |> 
+    mutate(sig = FDR < fdr_limit & abs(logFC) >= logfc_limit) |> 
+    add_column(base = base)
+}
+
+
+
+de_list <- function(res, group_var, fdr = "FDR", logfc = "logFC", logfc_limit = 0, fdr_limit = 0.05, name = NULL, split_up_down = FALSE) {
+  d <- res |>
+    filter(!!sym(fdr) < fdr_limit & abs(!!sym(logfc)) >= logfc_limit) |>
+    mutate(group = !!sym(group_var))
+  if (split_up_down) {
+    d <- d |>
+      mutate(direction = if_else(!!sym(logfc) > 0, "up", "down")) |>
+      unite(group, c(group, direction), sep = ":")
+  }
+  d <- d |>
+    select(group, id) |>
+    group_by(group)
+  kname <- ifelse(is.null(name), "", paste0(name, ":"))
+  ks <- paste0(kname, group_keys(d)[[1]])
+  d |>
+    distinct() |>
+    group_map(~pull(.x, id)) |>
+    set_names(ks)
+}
+
+
+pull_proteins <- function(des) {
+  des |>
+    select(protein, gene_symbol) |>
+    distinct() |>
+    arrange(gene_symbol) |>
+    filter(!is.na(gene_symbol))
+}
+
+make_de_genes <- function(de, fdr_limit = 0.05, logfc_limit = 1) {
+  list(
+    up = pull_proteins(de |> filter(FDR < fdr_limit & logFC >= logfc_limit)),
+    down = pull_proteins(de |> filter(FDR < fdr_limit & logFC <= -logfc_limit))
+  )
+}
+
+make_de_table <- function(de, info) {
+  de |>
+    select(id, logFC, PValue, FDR) |>
+    left_join(info, by = "id") |>
+    select(id, logFC, FDR, protein_accessions, gene_symbol) |>
+    mutate(across(c(logFC, FDR), ~signif(.x, 3)))
+}
+
+#' Convert a data frame to a matrix
+#'
+#' This function converts a data frame containing protein abundances to a
+#' matrix, with rows representing protein IDs and columns representing samples.
+#'
+#' @param dat A data frame containing protein abundances
+#' @param what A character string specifying which column should be used as
+#'   values in the matrix (default: "abu_norm")
+#' @param names A character string specifying which column should be used as
+#'   column names in the matrix (default: "sample")
+#'
+#' @return A matrix with protein IDs as row names, sample names as column names,
+#'   and the specified values in the cells
+dat2mat <- function(dat, what = "abu_norm", names = "sample", ids = "id") {
+  dat |> 
+    pivot_wider(id_cols = !!ids, names_from = !!names, values_from = !!what) |> 
+    column_to_rownames(ids) |> 
+    as.matrix()
+}
+
+
+add_genes <- function(res, info) {
+  g <- info |> 
+    select(id, gene_symbols, majority_proteins = protein)
+  res |> 
+    left_join(g, by = "id")
+}
+
