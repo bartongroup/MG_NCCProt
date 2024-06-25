@@ -5,6 +5,7 @@ library(dexdash)
 
 source("maxquant.R")
 source("de.R")
+source("batch.R")
 
 
 # Read experiment description, format data to match maxquant column names.
@@ -44,23 +45,41 @@ prot <- read_mq(
   des = des,
   filt_data = PROTEINS_FILTER,
   measure_col_pattern = MEASURE_COL_PATTERN
-)
+) |> 
+  remove_batch_effects(formula = "~ group")
 
 # Differential expression
 
 da_full <- limma_de_f(prot, "~ group + batch", what = "abu_med", logfc_limit = 0, fdr_limit = 0.01)
+da_pariwise <- limma_de(prot, group_var = "group", what ="abu_limma", logfc_limit = 0, fdr_limit = 0.01)
 
+# Prepare set for dexdash, full modell
 
-# Prepare data for dexdash
+dex_full <- dexdash::dexdash_set(
+  de = da_full |> 
+    select(id, log_fc = logFC, expr = AveExpr, p_value = PValue, contrast = contrast),
+  data = prot$dat |> 
+    select(id, sample, value = abu_med),
+  metadata = des |> 
+    select(sample, group, batch, replicate),
+  name = "Full model"
+)
 
-de <- da_full |> 
-  select(id, log_fc = logFC, expr = AveExpr, p_value = PValue, contrast = contrast)
+# Prepare second set for dexdash, pairwise model, data with batch effects removed
 
-data <- prot$dat |> 
-  select(id, sample, value = abu_med)
+dex_pairwise <- dexdash::dexdash_set(
+  de = da_pariwise |> 
+    select(id, log_fc = logFC, expr = AveExpr, p_value = PValue, contrast = contrast),
+  data = prot$dat |> 
+    select(id, sample, value = abu_limma),
+  metadata = des |> 
+    select(sample, group, batch, replicate),
+  name = "Pairwise model"
+)
 
-metadata <- des |> 
-  select(sample, group, batch)
+# Create a dexdash_list object containing two sets in it:
+
+dex <- dexdash::dexdash_list(dex_full, dex_pairwise)
 
 features <- prot$info |> 
   select(id, name = gene_symbol, description = protein_names)
@@ -70,6 +89,7 @@ fterms <- prepare_functional_terms(terms, feature_name = "gene_symbol")
 #fterms <- readRDS("fterms.rds")
 
 
-# Run dexdash
+# Run dexdash, now with new arguments. The first argument is the object
+# containing two dexdash sets.
 
-run_app(de, data, metadata, features, fterms)
+dexdash::run_app(dex, features, fterms)

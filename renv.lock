@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.4.0",
+    "Version": "4.4.1",
     "Repositories": [
       {
         "Name": "BioCsoft",
@@ -1122,6 +1122,41 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "348b0cb68eb90e8896fb78a506399c7f"
+    },
+    "dexdash": {
+      "Package": "dexdash",
+      "Version": "0.2.0",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "bartongroup",
+      "RemoteRepo": "dexdash",
+      "RemoteRef": "main",
+      "RemoteSha": "3b1041a7058c79b7d13eef36b4572eaed897f72f",
+      "Requirements": [
+        "DT",
+        "R",
+        "assertthat",
+        "biomaRt",
+        "bsicons",
+        "bslib",
+        "dplyr",
+        "fenr",
+        "ggbeeswarm",
+        "ggplot2",
+        "htmltools",
+        "jsonlite",
+        "methods",
+        "purrr",
+        "rlang",
+        "shiny",
+        "shinyWidgets",
+        "stats",
+        "stringr",
+        "tibble",
+        "tidyr"
+      ],
+      "Hash": "b8664fda1d47f9ec459be31df51c1c2c"
     },
     "digest": {
       "Package": "digest",
